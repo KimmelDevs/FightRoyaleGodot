@@ -3,12 +3,16 @@ config_version=5
 
 [application]
 
+run/main_scene="res://scenes/main.tscn"
+
 config/name="Fight Royale"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 
 [autoload]
 
 Data="*res://scripts/data.gd"
+Keys="*res://scripts/keys.gd"
+Profile="*res://scripts/profile.gd"
 
 [display]
 
