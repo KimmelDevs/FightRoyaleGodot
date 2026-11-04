@@ -6,6 +6,10 @@ config_version=5
 config/name="Fight Royale"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 
+[autoload]
+
+Data="*res://scripts/data.gd"
+
 [display]
 
 window/size/viewport_width=1280
