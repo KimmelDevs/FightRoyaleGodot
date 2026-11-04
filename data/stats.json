@@ -1,0 +1,66 @@
+{
+ "knight": {
+  "hp": 2500,
+  "guard": 100,
+  "move": 3.2,
+  "walk": 2.6,
+  "parry": 0.16,
+  "jump": 7
+ },
+ "mage": {
+  "hp": 2100,
+  "guard": 80,
+  "move": 3.4,
+  "walk": 2.6,
+  "parry": 0.16,
+  "jump": 7
+ },
+ "assassin": {
+  "hp": 2000,
+  "guard": 60,
+  "move": 4.2,
+  "walk": 3.4,
+  "parry": 0.22,
+  "jump": 8.2
+ },
+ "greatsword": {
+  "hp": 2750,
+  "guard": 120,
+  "move": 2.9,
+  "walk": 2.3,
+  "parry": 0.14,
+  "jump": 6.5
+ },
+ "katana": {
+  "hp": 2200,
+  "guard": 80,
+  "move": 3.8,
+  "walk": 3,
+  "parry": 0.2,
+  "jump": 7.5
+ },
+ "bow": {
+  "hp": 2000,
+  "guard": 60,
+  "move": 3.6,
+  "walk": 2.6,
+  "parry": 0.16,
+  "jump": 7.5
+ },
+ "knuckles": {
+  "hp": 2300,
+  "guard": 90,
+  "move": 4,
+  "walk": 3.2,
+  "parry": 0.2,
+  "jump": 8
+ },
+ "kicks": {
+  "hp": 2300,
+  "guard": 85,
+  "move": 4.1,
+  "walk": 3.2,
+  "parry": 0.2,
+  "jump": 8.6
+ }
+}

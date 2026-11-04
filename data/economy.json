@@ -1,0 +1,76 @@
+{
+ "start_characters": [
+  "aster",
+  "ember",
+  "garrick"
+ ],
+ "character_price": {
+  "gold": 5000,
+  "diamonds": 250
+ },
+ "skill_price": {
+  "gold": 2000,
+  "diamonds": 100
+ },
+ "win_gold": 250,
+ "max_bet": 5000,
+ "mob_gold": {
+  "slime": 2,
+  "bat": 2,
+  "goblin": 4,
+  "archer": 4,
+  "imp": 6,
+  "wraith": 6,
+  "brute": 12,
+  "golem": 150
+ },
+ "emblem_max": 10,
+ "default_loadout": [
+  "z",
+  "x",
+  "c"
+ ],
+ "emblems": [
+  {
+   "id": "fighter",
+   "name": "Fighter",
+   "per_level": {
+    "dmg": 0.02
+   },
+   "desc1": "+2% damage"
+  },
+  {
+   "id": "tank",
+   "name": "Tank",
+   "per_level": {
+    "hp": 0.03,
+    "guard": 0.03
+   },
+   "desc1": "+3% HP and guard"
+  },
+  {
+   "id": "assassin",
+   "name": "Assassin",
+   "per_level": {
+    "crit": 0.015
+   },
+   "desc1": "+1.5% critical chance"
+  },
+  {
+   "id": "mage",
+   "name": "Mage",
+   "per_level": {
+    "cd": 0.02
+   },
+   "desc1": "Skills recharge 2% faster"
+  },
+  {
+   "id": "swift",
+   "name": "Swift",
+   "per_level": {
+    "speed": 0.015
+   },
+   "desc1": "+1.5% move speed"
+  }
+ ]
+}
