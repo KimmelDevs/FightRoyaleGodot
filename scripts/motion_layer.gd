@@ -16,6 +16,11 @@ var burst := 0.0          ## male fighters: quieter idle
 var bone_map: Dictionary = {}  # FRG04 - dynamic humanoid lookups
 # FRG16A - interactive animation lab
 var lab_profile: Dictionary = {}  # per-fighter, persisted locomotion settings
+# FRG16B - combat choreography
+var combat_state := "idle"
+var combat_progress := 0.0
+var combat_weight := 0.0
+var combat_kit := ""
 var _hips := -1
 var _legs := [-1, -1]
 var _knees := [-1, -1]
@@ -56,6 +61,68 @@ func _lab_offsets(table: Dictionary, role: String) -> Vector3:
 	if not (raw is Array) or raw.size() != 3:
 		return Vector3.ZERO
 	return Vector3(float(raw[0]), float(raw[1]), float(raw[2]))
+
+# FRG16B: small, ADDITIVE secondary motion on top of authored kit poses.
+# Degrees are intentionally subtle so VRM grips and weapon attachments remain stable.
+func _frg16b_secondary(role: String, action: String, progress: float) -> Vector3:
+	var p: float = clampf(progress, 0.0, 1.0)
+	var wave: float = sin(p * PI)
+	var heavy_factor: float = 1.25 if heavy or combat_kit in ["greatsword", "knight"] else 0.85
+	if action == "attack":
+		if role in ["Spine", "Chest", "UpperChest"]:
+			return Vector3(-2.5 * wave * heavy_factor, 4.0 * (p - 0.5) * heavy_factor, 1.5 * wave)
+		if role == "RightShoulder":
+			return Vector3(-2.5 * wave, 0.0, -3.0 * wave)
+		if role == "RightLowerArm":
+			return Vector3(2.0 * wave, 0.0, 0.0)
+		if role == "LeftShoulder":
+			return Vector3(1.5 * wave, 0.0, 2.0 * wave)
+		if role == "Head":
+			return Vector3(1.0 * wave, -1.5 * (p - 0.5), 0.0)
+	elif action == "charge":
+		if role in ["Chest", "UpperChest"]:
+			return Vector3(5.0 * wave, -2.0 * wave, 0.0)
+		if role in ["LeftUpperLeg", "RightUpperLeg"]:
+			return Vector3(3.0, 0.0, 0.0)
+		if role == "RightLowerArm":
+			return Vector3(-4.0, 0.0, 0.0)
+	elif action == "block":
+		if role in ["Chest", "UpperChest"]:
+			return Vector3(3.0, 0.0, -2.0)
+		if role == "LeftShoulder":
+			return Vector3(-3.0, 0.0, 4.0)
+		if role == "LeftLowerArm":
+			return Vector3(-3.0, 0.0, 0.0)
+		if role == "Head":
+			return Vector3(3.0, 0.0, 0.0)
+	elif action in ["hit", "stagger"]:
+		var strength: float = 1.5 if action == "stagger" else 1.0
+		if role in ["Spine", "Chest", "UpperChest"]:
+			return Vector3(-7.0 * strength * wave, 0.0, 3.0 * wave)
+		if role == "Head":
+			return Vector3(-4.0 * strength * wave, 0.0, 0.0)
+		if role == "RightShoulder":
+			return Vector3(3.0 * wave, 0.0, -3.0 * wave)
+		if role == "LeftShoulder":
+			return Vector3(3.0 * wave, 0.0, 3.0 * wave)
+	elif action == "dodge":
+		if role in ["Chest", "UpperChest"]:
+			return Vector3(8.0 * wave, 0.0, 2.0 * wave)
+		if role in ["LeftUpperLeg", "RightUpperLeg"]:
+			return Vector3(6.0 * wave, 0.0, 0.0)
+		if role == "Head":
+			return Vector3(-2.0 * wave, 0.0, 0.0)
+	elif action == "jump":
+		if role in ["LeftLowerLeg", "RightLowerLeg"]:
+			return Vector3(6.0, 0.0, 0.0)
+		if role in ["Chest", "UpperChest"]:
+			return Vector3(-2.0, 0.0, 0.0)
+	elif action == "win":
+		if role in ["Chest", "UpperChest"]:
+			return Vector3(-3.0, 0.0, 0.0)
+		if role == "Head":
+			return Vector3(-2.0, 0.0, 0.0)
+	return Vector3.ZERO
 
 func _process_modification() -> void:
 	var sk := get_skeleton()
@@ -105,6 +172,14 @@ func _process_modification() -> void:
 			continue
 		var euler: Vector3 = _lab_offsets(idle_offsets, role).lerp(_lab_offsets(walk_offsets, role), blend_walk)
 		euler = euler.lerp(_lab_offsets(run_offsets, role), blend_run)
+		# FRG16B: combat offsets edited in Animation Lab are applied in-game.
+		# Smooth blend avoids a snap between walking and attacking or reacting.
+		var blend_combat: float = clampf(combat_weight, 0.0, 1.0)
+		if blend_combat > 0.0001 and combat_state != "idle":
+			var active_offsets: Dictionary = pose_states.get(combat_state, {})
+			var user_offset: Vector3 = _lab_offsets(active_offsets, role)
+			euler = euler.lerp(user_offset, blend_combat)
+			euler += _frg16b_secondary(role, combat_state, combat_progress) * blend_combat
 		if euler.length_squared() < 0.000001:
 			continue
 		var radians := Vector3(deg_to_rad(euler.x), deg_to_rad(euler.y), deg_to_rad(euler.z))

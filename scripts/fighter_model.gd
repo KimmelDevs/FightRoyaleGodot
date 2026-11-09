@@ -10,6 +10,10 @@ const FALLBACK := {"m": "rook", "f": "ember"}  ## stand-ins until a fighter has 
 
 var character_id := ""  # canonical fighter ID, not shared kit ID
 var lab_paused := false
+# FRG16B - combat choreography
+var choreo_state := "idle"
+var choreo_progress := 0.0
+var choreo_weight := 0.0
 var look: Dictionary
 var kit := ""
 var skeleton: Skeleton3D
@@ -94,6 +98,7 @@ func setup(look_data: Dictionary) -> void:
 	motion.heavy = look.get("body", "f") == "m"
 	motion.bone_map = FighterRig.runtime_bone_map(skeleton, rig_profile)
 	motion.lab_profile = LAB_PROFILES.load_for(character_id if not character_id.is_empty() else String(look.get("vrm", "")))
+	motion.combat_kit = kit
 	skeleton.add_child(motion)
 	for m in vrm.find_children("*", "MeshInstance3D", true, false):
 		_meshes.append(m)
@@ -178,6 +183,9 @@ func _process(dt: float) -> void:
 	motion.airborne = airborne
 	motion.burst = burst
 	motion.phase = _phase
+	motion.combat_state = choreo_state
+	motion.combat_progress = clampf(choreo_progress, 0.0, 1.0)
+	motion.combat_weight = lerpf(motion.combat_weight, clampf(choreo_weight, 0.0, 1.0), 1.0 - exp(-15.0 * dt))
 	motion.hips_offset = lerpf(motion.hips_offset, _hips_target, 1.0 - exp(-12.0 * dt))
 	if _flash_t > 0.0:
 		_flash_t -= dt

@@ -5,7 +5,8 @@ extends RefCounted
 
 const PROJECT_PATH := "res://data/animation_lab_profiles.json"
 const USER_PATH := "user://animation_lab_profiles.json"
-const STATES := ["idle", "walk", "run"]
+# FRG16B - combat choreography
+const STATES := ["idle", "walk", "run", "attack", "charge", "block", "hit", "stagger", "dodge", "jump", "win"]
 
 static func _load_document(path: String) -> Dictionary:
 	if not FileAccess.file_exists(path):
@@ -26,7 +27,7 @@ static func load_for(character_id: String) -> Dictionary:
 	return {}
 
 static func new_profile() -> Dictionary:
-	return {"poses": {"idle": {}, "walk": {}, "run": {}}, "gait": {"stride": 1.0, "knee": 1.0, "arms": 1.0, "bob": 1.0}}
+	return {"poses": {"idle": {}, "walk": {}, "run": {}, "attack": {}, "charge": {}, "block": {}, "hit": {}, "stagger": {}, "dodge": {}, "jump": {}, "win": {}}, "gait": {"stride": 1.0, "knee": 1.0, "arms": 1.0, "bob": 1.0}}
 
 static func get_angles(profile: Dictionary, state: String, bone: String) -> Vector3:
 	var poses: Dictionary = profile.get("poses", {})

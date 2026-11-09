@@ -5,7 +5,8 @@ extends Control
 
 const Profiles = preload("res://scripts/animation_lab_profiles.gd")
 const RIG = preload("res://scripts/rig_mapper.gd")
-const MODES := ["idle", "walk", "run"]
+# FRG16B - combat choreography
+const MODES := ["idle", "walk", "run", "attack", "charge", "block", "hit", "stagger", "dodge", "jump", "win"]
 
 var _character: OptionButton
 var _state: OptionButton
@@ -79,7 +80,7 @@ func _build_ui() -> void:
 	panel.add_theme_constant_override("separation", 10)
 	scroll.add_child(panel)
 	_style_text(panel, "ANIMATION LAB", 29, Color("#ffe6a6"))
-	_style_text(panel, "Edit humanoid joint rotations. Walk/run offsets are applied on top of existing combat poses.", 13)
+	_style_text(panel, "Edit joints for locomotion AND combat. Actions use additive offsets over kit animations.", 13)
 	_style_text(panel, "Fighter", 15)
 	_character = OptionButton.new()
 	panel.add_child(_character)
@@ -189,7 +190,7 @@ func _build_ui() -> void:
 	_button(tools, "Side", func(): _yaw = 90.0)
 	_button(tools, "Back", func(): _yaw = 180.0)
 	_button(tools, "Play / Pause Walk", func(): _gait_running = not _gait_running)
-	_style_text(right, "Select Idle, Walk or Run, adjust joints, then Save Fighter. Settings also apply in duels.", 13)
+	_style_text(right, "Preview combat states, rotate bones and Save Fighter. Edits also apply in battles.", 13)
 
 func _change_character(index: int) -> void:
 	if index < 0 or index >= Data.roster.size():
@@ -354,6 +355,25 @@ func _viewport_input(event: InputEvent) -> void:
 			_change_bone(index)
 		accept_event()
 
+# FRG16B: preview the actual kit pose underneath editable joint offsets.
+func _frg16b_preview_pose() -> String:
+	match _selected_state:
+		"attack":
+			var attacks: Dictionary = Data.attacks_for(_selected_char)
+			var basic: Dictionary = attacks.get("l1", {})
+			return String(basic.get("pose_s", "idle"))
+		"charge":
+			var attacks: Dictionary = Data.attacks_for(_selected_char)
+			var charged: Dictionary = attacks.get("heavy", {})
+			return String(charged.get("pose_w", "idle"))
+		"block": return "block"
+		"hit": return "hit"
+		"stagger": return "stagger"
+		"jump": return "jump"
+		"win": return "win"
+		"dodge": return "idle"
+		_: return "idle"
+
 func _process(dt: float) -> void:
 	if not is_instance_valid(_model):
 		return
@@ -362,8 +382,12 @@ func _process(dt: float) -> void:
 		_model.lab_paused = true
 	else:
 		_model.lab_paused = false
-	_model.walk = 0.0 if _selected_state == "idle" else 1.0
+	_model.walk = 1.0 if _selected_state in ["walk", "run"] else 0.0
 	_model.run = 1.0 if _selected_state == "run" else 0.0
+	_model.choreo_state = _selected_state if _selected_state not in ["idle", "walk", "run"] else "idle"
+	_model.choreo_weight = 0.0 if _selected_state in ["idle", "walk", "run"] else 1.0
+	_model.choreo_progress = fmod(float(Time.get_ticks_msec()) / 1100.0, 1.0) if _gait_running else 0.45
+	_model.play_pose(_frg16b_preview_pose(), 18.0)
 	if _model.skeleton == null:
 		return
 	for role in _marker_nodes:

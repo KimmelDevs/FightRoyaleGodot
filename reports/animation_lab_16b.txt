@@ -1,0 +1,15 @@
+Fight Royale — Update 16B: Combat Animation Lab & Choreography
+
+Open Main Menu > Animation Lab; animation states now include Attack, Charge,
+Block, Hit, Stagger, Dodge, Jump and Win, in addition to Idle, Walk and Run.
+Select a fighter, change an action state, edit joint X/Y/Z rotations and Save Fighter.
+Per-character edits apply in Duel vs CPU and CPU vs CPU.
+
+Runtime effects: subtle additive torso, shoulder, forearm and leg motion during
+combat, smoothly blended on top of existing kit AnimationPlayer poses. Weapon
+bone attachments, VRM files, hitboxes, damage, AI, SFX and cooldowns are unchanged.
+This is a joint-offset pose editor, not a keyframe timeline or automatic IK solver.
+Models require successful VRM imports in the Godot editor.
+
+If your project already has custom gameplay edits conflicting with an expected
+patch anchor, the installer stops without writing any changes.

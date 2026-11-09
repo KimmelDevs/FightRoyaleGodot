@@ -313,6 +313,7 @@ func tick(dt: float) -> void:
 	model.charge = minf(state_t / CHARGE_MAX, 1.0) if state == S.CHARGE else maxf(model.charge - dt * 4.0, 0.0)
 	_compute_pose()
 	model.play_pose(pose_name, pose_speed)
+	_frg16b_update_choreography()
 
 func add_guard_fatigue() -> void:
 	guard_fatigue = mini(guard_fatigue + 1, FATIGUE_CAP)
@@ -709,6 +710,42 @@ func _ko() -> void:
 	knocked_out.emit(self)
 
 # --- posing ------------------------------------------------------------------------------
+
+# FRG16B - combat choreography
+# Sync combat state to additive skeleton motion; combat stats are unchanged.
+func _frg16b_update_choreography() -> void:
+	if model == null:
+		return
+	var action := "idle"
+	if state == S.KO:
+		action = "hit"
+	elif state == S.WIN:
+		action = "win"
+	elif state == S.HITSTUN:
+		action = "hit"
+	elif state == S.STAGGER:
+		action = "stagger"
+	elif state == S.ATTACK:
+		action = "attack"
+	elif state == S.CHARGE:
+		action = "charge"
+	elif state == S.BLOCK:
+		action = "block"
+	elif _dodge_t > 0.0 or _dash_t > 0.0:
+		action = "dodge"
+	elif not on_ground:
+		action = "jump"
+	model.choreo_state = action
+	model.choreo_weight = 0.0 if action == "idle" else 1.0
+	if action == "attack" and not atk.is_empty():
+		var total: float = maxf(0.01, (float(atk.get("wind", 0.0)) + float(atk.get("active", 0.0)) + float(atk.get("recover", 0.0))) * attack_time_multiplier())
+		model.choreo_progress = clampf(state_t / total, 0.0, 1.0)
+	elif action == "dodge":
+		model.choreo_progress = 0.5
+	elif action == "win":
+		model.choreo_progress = 0.5
+	else:
+		model.choreo_progress = clampf(state_t / 0.45, 0.0, 1.0)
 
 func _compute_pose() -> void:
 	var p := "idle"
