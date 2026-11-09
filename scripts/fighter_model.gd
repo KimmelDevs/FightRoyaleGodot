@@ -10,6 +10,7 @@ var look: Dictionary
 var kit := ""
 var skeleton: Skeleton3D
 var rig_profile: Dictionary = {} # FRG04 - rig mapper integrated
+var loaded_model_id := "" # FRG05 - automatic weapon profile mounts
 var player: AnimationPlayer
 var motion: MotionLayer
 var vrm: Node3D
@@ -51,6 +52,7 @@ func setup(look_data: Dictionary) -> void:
 		push_error("Fight Royale: VRM model has no imported Skeleton3D: " + id)
 		return
 	rig_profile = FighterRig.profile_for(id)
+	loaded_model_id = id
 	player = AnimationPlayer.new()
 	player.name = "Poses"
 	vrm.add_child(player)
@@ -158,8 +160,9 @@ func _build_weapons() -> void:
 	var steel := _mat("#eef3ff", true)
 	var trim := _mat(L.trim)
 	var glow := _glow(L.glow)
-	var r := _grip("Right")
-	var l := _grip("Left")
+	var mount_profile: Dictionary = WeaponMount.profile_for(look, loaded_model_id)
+	var r: Node3D = WeaponMount.configure_grip(_grip("Right"), mount_profile, "right")
+	var l: Node3D = WeaponMount.configure_grip(_grip("Left"), mount_profile, "left")
 	match kit:
 		"knight":
 			_part(r, _cyl(0.016, 0.018, 0.17), _mat("#5a3a2a"))
@@ -169,7 +172,9 @@ func _build_weapons() -> void:
 			_part(r, _box(0.014, 0.72, 0.016), glow, Vector3(0, 0.5, 0))
 			blade_base = _pivot(r, Vector3(0, 0.4, 0)); blade_tip = _pivot(r, Vector3(0, 1.05, 0))
 			# Heater shield on the left forearm, facing out from the back of the hand.
-			shield_node = _pivot(l, Vector3(0, 0, -0.06))
+			var forearm_mount: Node3D = WeaponMount.forearm_shield_mount(skeleton, rig_profile, l)
+			shield_node = _pivot(forearm_mount, Vector3(0, 0, -0.06))
+			WeaponMount.configure_shield(shield_node, mount_profile)
 			var sh := _pivot(shield_node)
 			sh.rotation = Vector3(PI / 2, 0, 0)
 			_part(sh, _heater(0.44, 0.68, 0.04), trim)

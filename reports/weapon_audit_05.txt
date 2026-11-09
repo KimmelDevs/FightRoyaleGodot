@@ -1,0 +1,20 @@
+FIGHT ROYALE - WEAPON ATTACHMENTS UPDATE 05
+
+Fighters in roster: 17
+VRM models in models/: 21
+Kit types: assassin=1, bow=2, greatsword=2, katana=2, kicks=1, knight=2, knuckles=2, mage=5
+Unknown kit types: none
+
+INSTALLED BEHAVIOR
+- Keep original procedural weapons; align them to Update 04 humanoid grips.
+- Accept per-kit, per-model and per-fighter offsets in data/weapon_profiles.json.
+- Move knight shield attachment from the wrist to the left forearm.
+- Keep blade_base, blade_tip, cast_point and shield_node anchors intact.
+- Fallback to hand attachment when a forearm bone is unavailable.
+- No VRM bytes, model rigs, animation clips, or sound files changed.
+
+NOTES
+- Default offsets are neutral until actual gameplay screenshots can guide tuning.
+- A static scan cannot prove in-game weapon alignment; use --check-godot when available.
+- User changes to existing profile values are retained on reinstallation.
+- New fighter models or roster additions can be discovered by rerunning the installer.
