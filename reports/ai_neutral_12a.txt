@@ -1,0 +1,22 @@
+FIGHT ROYALE GODOT - UPDATE 12A (ADVANCED AI: SPACING & ATTACK CHOICES)
+
+Implemented:
+- Every AI controls its own movement toward or around the opponent.
+- Melee target spacing uses actual light-attack reach, rather than one global threshold.
+- Ranged AI approaches firing distance, strafes and retreats when pressured.
+- Both AI classes return toward arena center to avoid edge camping.
+- Melee approach can sprint when the target is far away.
+- Skill choices evaluate attack type, range, cooldown and defensive context.
+- More opportunistic attack decisions against staggered or blocking opponents.
+- The old automatic melee approach only activates when no explicit AI movement is requested.
+
+Preserved:
+- Duel vs CPU and CPU vs CPU, per-fighter difficulty from Update 11.
+- Existing damage values, parry timing, guard fatigue and skill cooldown lengths.
+- Spectator cameras, third-person camera, player controls, weapons, VRMs, SFX.
+
+Next suggested 12B: intelligent projectile parry/dodge and heavy attack defense.
+Next suggested 12C: whiff punish, baiting and anti-stalling refinements.
+
+This update does not verify Godot runtime or VRM rendering. Open the project in
+Godot Editor first for automatic imports, then test both game modes.

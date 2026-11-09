@@ -463,7 +463,8 @@ func _move(dt: float) -> void:
 		walking = on_ground
 	else:
 		var v := 0.0
-		if state == S.IDLE and auto_approach and brain != null and o and not o.is_down() and dist > ENGAGE:
+		# FRG12A - explicit AI movement takes precedence over legacy auto-approach
+		if state == S.IDLE and auto_approach and brain != null and o and not o.is_down() and dist > ENGAGE and in_move.length_squared() < 0.0001:
 			v = walk_speed
 			walking = on_ground
 		if state == S.ATTACK and not atk.is_empty() and atk_phase <= 1 and dist > MIN_DIST + 0.15:
