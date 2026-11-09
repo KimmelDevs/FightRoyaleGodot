@@ -23,6 +23,9 @@ var _timers: Array = []         # [time, Callable]
 var _projectiles: Array = []    # dictionaries
 var _strike_marks: Array = []   # {target, land, id}
 var _trails: Dictionary = {}    # Fighter -> Trail
+var _melee_hits: Dictionary = {}  # FRG07 - persistent melee contact and directional knockback
+const MELEE_FRONT_DOT := 0.15
+const MELEE_HEIGHT_TOLERANCE := 1.3
 var _player_brain: PlayerBrain
 var _trauma := 0.0
 var _shake_t := 0.0
@@ -90,7 +93,7 @@ func _build_world() -> void:
 func start_round() -> void:
 	for f in fighters: f.queue_free()
 	for t in _trails.values(): t.queue_free()
-	fighters.clear(); _trails.clear(); _projectiles.clear(); _strike_marks.clear(); _timers.clear()
+	fighters.clear(); _trails.clear(); _melee_hits.clear(); _projectiles.clear(); _strike_marks.clear(); _timers.clear()
 	fx.clear()
 	local = null
 	_round += 1
@@ -176,6 +179,10 @@ func _process(real_dt: float) -> void:
 	if cfg.mode == "team": _retarget()
 	for f in fighters:
 		f.tick(dt)
+		# A sword remains dangerous for the entire active window. One contact per
+		# defender/swing is enforced in _melee, so framerate cannot multiply damage.
+		if dt > 0.0 and not round_over and f.active_melee():
+			_active_melee_contact(f)
 		if _trails.has(f):
 			_trails[f].emitting = f.trail_on()
 			_trails[f].tick(dt)
@@ -234,19 +241,44 @@ func _on_swing(f: Fighter) -> void:
 		"blink": _blink(f, a)
 		_: _melee(f, a)
 
+func _active_melee_contact(f: Fighter) -> void:
+	_melee(f, f.atk)
+
 func _melee(f: Fighter, a: Dictionary) -> void:
+	if not f.active_melee():
+		return
+	var contact_key := "%d:%d" % [f.id, f.swing_serial]
+	var landed: Dictionary = _melee_hits.get(contact_key, {})
 	var fwd := f.forward()
 	for d in enemies_of(f):
+		if landed.has(d.id):
+			continue
 		var to: Vector3 = d.position - f.position
 		var dy := absf(to.y)
-		to.y = 0
+		to.y = 0.0
 		var dist := to.length()
 		var dir := to / maxf(dist, 0.001)
-		if d is Fighter and cfg.mode == "duel" and d.state == Fighter.S.ATTACK and d.atk.type == "melee" \
-			and (d.atk_phase == 1 or (d.atk_phase == 0 and float(d.atk.wind) - d.state_t <= 0.08)) and dist <= float(a.reach) + 0.3 and dy < 0.8:
+		var front_ok := dist <= 0.6 or dir.dot(fwd) >= MELEE_FRONT_DOT
+		if not front_ok:
+			continue
+		# Two overlapping melee active windows can clash. Check BOTH fighters'
+		# facings, so a hit from behind doesn't produce a fake frontal clash.
+		if d is Fighter and d.active_melee() and dy < 0.8 \
+			and dist <= minf(float(a.reach), float(d.atk.reach)) + 0.3 \
+			and (dist <= 0.6 or (-dir).dot(d.forward()) >= MELEE_FRONT_DOT):
+			landed[d.id] = true
+			_melee_hits[contact_key] = landed
+			var other_key := "%d:%d" % [d.id, d.swing_serial]
+			var other_landed: Dictionary = _melee_hits.get(other_key, {})
+			other_landed[f.id] = true
+			_melee_hits[other_key] = other_landed
 			_clash(f, d, f.position + dir * minf(dist * 0.5, 0.8) + Vector3(0, 1.15, 0))
 			return
-		if dist - d.radius + 0.35 > float(a.reach) or dy > 1.3 or (dist > 0.6 and dir.dot(fwd) < 0.15): continue
+		if dist - d.radius + 0.35 > float(a.reach) or dy > MELEE_HEIGHT_TOLERANCE:
+			continue
+		# Record contact BEFORE hit handling (which can trigger counters/KO).
+		landed[d.id] = true
+		_melee_hits[contact_key] = landed
 		apply_hit(f, d, a, f.atk_power, d.chest() - dir * 0.15, dir, false)
 
 func _fire(f: Fighter, a: Dictionary) -> void:
@@ -275,19 +307,32 @@ func _spawn_projectile(shooter, a: Dictionary, power: float, pos: Vector3, vel: 
 		"atk": a, "power": power, "pierce": bool(a.pierce), "hit": {}, "target": target, "color": color, "size": size})
 	_next_id += 1
 
+## Closest point on projectile travel segment, including both end points.
+func _swept_projectile_point(target: Vector3, a: Vector3, b: Vector3) -> Vector3:
+	var travel := b - a
+	var length_sq := travel.length_squared()
+	if length_sq < 0.000001:
+		return a
+	var along := clampf((target - a).dot(travel) / length_sq, 0.0, 1.0)
+	return a + travel * along
+
 func _update_projectiles(dt: float) -> void:
 	for p in _projectiles.duplicate():
 		var node: MeshInstance3D = p.node
+		var old_pos: Vector3 = node.global_position
 		node.global_position += p.vel * dt
 		p.life -= dt
 		var done := false
 		for e in fighters:
 			if e.team == p.team or e.is_down() or p.hit.has(e.id): continue
-			if node.global_position.distance_to(e.chest()) < 0.3 * p.size + e.radius:
+			var contact: Vector3 = _swept_projectile_point(e.chest(), old_pos, node.global_position)
+			if contact.distance_to(e.chest()) < 0.3 * p.size + e.radius:
 				p.hit[e.id] = true
-				var dir: Vector3 = p.vel; dir.y = 0; dir = dir.normalized()
-				_impact(p.atk, node.global_position, p.color, 0.7)
-				apply_hit(p.shooter, e, p.atk, p.power, node.global_position, dir, true)
+				var dir: Vector3 = p.vel
+				dir.y = 0.0
+				dir = dir.normalized()
+				_impact(p.atk, contact, p.color, 0.7)
+				apply_hit(p.shooter, e, p.atk, p.power, contact, dir, true)
 				if not p.pierce: done = true; break
 		var gp := node.global_position
 		if p.life <= 0 or gp.y < 0.05 or Vector2(gp.x, gp.z).length() > 16: done = true
@@ -375,7 +420,7 @@ func _blink(f: Fighter, a: Dictionary) -> void:
 func apply_hit(attacker, d: Fighter, a: Dictionary, power: float, hit_pos: Vector3, dir: Vector3, ranged: bool) -> void:
 	var result := d.receive_hit(attacker, a, power)
 	var glow := Color(attacker.look.glow) if attacker is Fighter else Color.WHITE
-	var heavy: bool = a.heavy or a.id == "l3"
+	var heavy: bool = bool(a.get("heavy", false)) or String(a.get("id", "")) == "l3"
 	var shield_pos := d.model.shield_node.global_position if d.model.shield_node else hit_pos
 	match result:
 		"hit", "crit", "ko":

@@ -30,6 +30,8 @@ const RAGE_MULT := 1.2
 const RANGED_REST := {"mage": 1.2, "bow": 1.3}
 const STUN_DR_WINDOW := 3.0
 const STUN_DR := 0.6
+# FRG07 - persistent melee contact and directional knockback
+const KNOCK_DAMPING := 14.0
 
 signal swing(f: Fighter)
 signal knocked_out(f: Fighter)
@@ -107,6 +109,7 @@ var _holding := false
 var _hold_t := 0.0
 var _guard_delay := 0.0
 var _knock := 0.0
+var _knock_dir := Vector3.ZERO
 var _dash_t := 0.0
 var _dash_dir := Vector3.ZERO
 var _dodge_t := 0.0
@@ -199,6 +202,11 @@ func tick(dt: float) -> void:
 	model.charge = minf(state_t / CHARGE_MAX, 1.0) if state == S.CHARGE else maxf(model.charge - dt * 4.0, 0.0)
 	_compute_pose()
 	model.play_pose(pose_name, pose_speed)
+
+## True throughout the *entire* damaging window, not just on the first active frame.
+func active_melee() -> bool:
+	return state == S.ATTACK and not atk.is_empty() and String(atk.get("type", "")) == "melee" \
+		and atk_phase == 1 and state_t <= float(atk.wind) + float(atk.active) + 0.0001
 
 ## Melee trail should show (wind-up end, active, just after).
 func trail_on() -> bool:
@@ -378,13 +386,17 @@ func _move(dt: float) -> void:
 			walking = on_ground
 		if state == S.ATTACK and not atk.is_empty() and atk_phase <= 1 and dist > MIN_DIST + 0.15:
 			v += float(atk.lunge)
-		_knock = maxf(_knock - 14.0 * dt, 0.0)
-		v -= _knock
+		# Knockback uses the ORIGINAL impact direction, independent of facing changes.
+		_knock = maxf(_knock - KNOCK_DAMPING * dt, 0.0)
 		if dist < MIN_DIST and v > 0.0:
 			v = 0.0
 		pos += dir * v * dt
+		if _knock > 0.0:
+			pos += _knock_dir * _knock * dt
 
 		var steer := 1.0 if state == S.IDLE else 0.5 if state == S.BLOCK else 0.4 if state == S.CHARGE else 0.0
+		# Don't let direct input instantly erase a strong knockback reaction.
+		if _knock > 0.2: steer *= 0.35
 		var requested := Vector3.ZERO
 		if steer > 0.0 and in_move.length_squared() > 0.0001:
 			var sprint_now := in_sprint and state == S.IDLE and on_ground
@@ -434,7 +446,27 @@ func teleport(to: Vector3) -> void:
 		var d: Vector3 = opponent.position - position
 		rotation.y = atan2(d.x, d.z)
 
-func push_back(speed: float) -> void: _knock = maxf(_knock, speed)
+func _apply_knock(attacker, speed: float) -> void:
+	if speed <= 0.0: return
+	_knock = maxf(_knock, speed)
+	var away := -forward()
+	if attacker is Node3D:
+		away = global_position - attacker.global_position
+		away.y = 0.0
+	if away.length_squared() > 0.0001:
+		_knock_dir = away.normalized()
+	else:
+		_knock_dir = -forward()
+
+func _interrupt_attack() -> void:
+	# A hit or clash cancels pending combo inputs; the next tap starts from l1.
+	_holding = false
+	_buffered = false
+	_combo_next = "l1"
+	_combo_timer = 0.0
+
+func push_back(speed: float) -> void:
+	_apply_knock(opponent, speed)
 
 # --- getting hit -------------------------------------------------------------------------
 
@@ -456,19 +488,19 @@ func receive_hit(attacker, a: Dictionary, power: float) -> String:
 			guard = 0.0
 			last_damage = dmg * 0.4; last_crit = false
 			hp = maxf(hp - last_damage, 0.0)
-			_knock = 3.5
+			_apply_knock(attacker, 3.5)
 			if hp <= 0.0: _ko(); return "ko"
 			stagger(0.85)
 			model.flash(Color("#ffd966"), 0.18)
 			return "guard_break"
-		_knock = float(a.knock) * 0.5
+		_apply_knock(attacker, float(a.knock) * 0.5)
 		return "blocked"
 	var cc: float = attacker.crit_chance if attacker is Fighter else 0.2
 	last_crit = randf() < cc
 	if last_crit: dmg *= 1.6
 	last_damage = dmg
 	hp = maxf(hp - dmg, 0.0)
-	_knock = float(a.knock)
+	_apply_knock(attacker, float(a.knock))
 	model.flash()
 	if hp <= 0.0: _ko(); return "ko"
 	# One stun per skill use; repeated stuns within a few seconds get shorter.
@@ -481,14 +513,14 @@ func receive_hit(attacker, a: Dictionary, power: float) -> String:
 	_last_stun_at = _clock
 	var stun := maxf(0.1, float(a.stun) * pow(STUN_DR, _stun_chain))
 	if a.heavy or a.stagger: stagger(stun)
-	else: _stun = stun; _stun_pose = "hit"; _holding = false; _set_state(S.HITSTUN)
+	else: _stun = stun; _stun_pose = "hit"; _interrupt_attack(); _set_state(S.HITSTUN)
 	return "crit" if last_crit else "hit"
 
 func stagger(d: float) -> void:
-	_stun = d; _stun_pose = "stagger"; _holding = false; _set_state(S.STAGGER)
+	_stun = d; _stun_pose = "stagger"; _interrupt_attack(); _set_state(S.STAGGER)
 
 func clash_recoil() -> void:
-	_stun = 0.38; _stun_pose = "clash"; _holding = false; _knock = 4.0; _set_state(S.HITSTUN)
+	_stun = 0.38; _stun_pose = "clash"; _interrupt_attack(); _apply_knock(opponent, 4.0); _set_state(S.HITSTUN)
 
 func win() -> void:
 	if state != S.KO: _set_state(S.WIN)

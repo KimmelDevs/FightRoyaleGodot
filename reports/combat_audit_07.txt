@@ -1,0 +1,22 @@
+FIGHT ROYALE GODOT — COMBAT UPDATE 07
+
+CHANGES
+- Samples melee collision throughout each attack's active window; prior code
+  tested only the first active frame and could miss moving opponents.
+- Keeps one contact (hit/parry/block/clash) per target per swing, even when
+  running above 60 FPS or during hit-stop.
+- Uses facing checks for melee and clashes, avoiding clashes from behind.
+- Improves knockback: defender moves away from the actual source of impact,
+  instead of using whichever direction the character later faces.
+- Hitstun, stagger and clashes clear buffered combo inputs.
+- Uses swept (segment) hit detection on fast projectiles to reduce tunneling.
+- Keeps the existing attacks.json damage, skill cooldowns, guard/parry rules,
+  SFX, VRM assets, VFX and two game modes unchanged.
+
+TESTING
+Run Duel vs CPU and CPU vs CPU. Check a light combo, heavy hit, projectile,
+block, guard break, and clash. Confirm each swing deals damage only once.
+
+The installer was verified by Python static checks and idempotence testing.
+Actual Godot parsing/rendering still needs confirmation on your machine.
+Use --check-godot when you have the Godot executable on PATH.
