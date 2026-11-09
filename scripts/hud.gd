@@ -1,5 +1,6 @@
 class_name Hud
 extends CanvasLayer
+# FRG15A - status and passive runtime
 ## In-match HUD: HP/guard bars, team lists, skill slots with cooldowns, ATK rest and DASH,
 ## READY/FIGHT banners, the result screen and the Esc pause menu.
 
@@ -159,6 +160,9 @@ func _fill(box: Control, info: Dictionary) -> void:
 	# FRG08 - defense HUD fatigue counter
 	var penalty := int(info.get("fatigue", 0))
 	var suffix := "  FATIGUE %d/10" % penalty if penalty > 0 else ""
+	var status_text: String = String(info.get("status", ""))
+	if status_text != "":
+		suffix += "  [%s]" % status_text
 	(box.get_node("Name") as Label).text = "%s  %d / %d%s" % [info.name, int(ceil(info.hp)), int(info.max_hp), suffix]
 	var hp: ProgressBar = box.get_node("Hp"); hp.max_value = info.max_hp; hp.value = info.hp
 	var gd: ProgressBar = box.get_node("Guard"); gd.max_value = info.max_guard; gd.value = info.guard

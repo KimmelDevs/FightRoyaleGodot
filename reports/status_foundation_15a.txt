@@ -1,0 +1,19 @@
+FIGHT ROYALE — UPDATE 15A: PASSIVE / STATUS FOUNDATION
+
+- Adds a separate, round-scoped status runtime for each fighter.
+- Supports timed and capped stack effects: haste, slow, weaken, brittle,
+  fortify, focus, resolve, guard_flow, scorch, bleed.
+- Hooks attack starts, blocks, parries, landed hits, guard breaks, clashes,
+  and projectile destruction into configurable character passive events.
+- Attack definitions may optionally include:
+    "apply_status": "scorch", "status_chance": 0.4,
+    "status_stacks": 1, "status_duration": 4.0
+- Future character installers configure reactions in data/passive_profiles_15a.json:
+    "profiles": {"fighter_id": {"triggers": {"parried": [
+      {"effect": "haste", "target": "self", "stacks": 1,
+       "duration": 3.0, "cooldown": 1.0}
+    ]}}}
+- No status or passive is applied automatically to the current roster.
+- No changes to existing skill damage, cooldowns or weapon attacks.
+- Status state resets with each new Fighter instance; no shop/economy involved.
+- This is a Python patch validation only; import project in Godot for runtime checks.

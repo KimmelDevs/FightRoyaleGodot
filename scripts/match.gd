@@ -1,5 +1,6 @@
 class_name Match
 extends Node3D
+# FRG15A - status and passive runtime
 # FRG08 - defense integration and visible fighter checks
 ## A running match (port of the web game.ts): duel (1v1) and team (2v2-4v4) in the 3D arena.
 ## Owns the fighters, resolves attacks (melee arcs, clashes, projectiles, area strikes, buffs,
@@ -573,6 +574,10 @@ func _resolve_projectile_duels(dt: float) -> void:
 			fx.number(impact + Vector3(0.0, 0.3, 0.0), "CLASH!", Color("#ffe6a0"), 0.65)
 			claimed[a.id] = true
 			claimed[b.id] = true
+			if a.shooter is Fighter:
+				a.shooter.notify_passive_event("projectile_destroyed", b.shooter if b.shooter is Fighter else null)
+			if b.shooter is Fighter:
+				b.shooter.notify_passive_event("projectile_destroyed", a.shooter if a.shooter is Fighter else null)
 			destroyed.append(a)
 			destroyed.append(b)
 			break
@@ -645,6 +650,7 @@ func _update_projectiles(dt: float) -> void:
 				fx.sparks(cut, Color(defender.look.glow), 18, 5.0, -p.vel.normalized())
 				fx.ring(cut, Color("#ffe6a4"), 0.85, 0.2, 0.65)
 				fx.number(cut + Vector3(0, 0.22, 0), "CLASH!", Color("#ffe6a4"), 0.65)
+				defender.notify_passive_event("projectile_destroyed", p.shooter if p.shooter is Fighter else null)
 				done = true
 				break
 		if done:
@@ -754,6 +760,23 @@ func _blink(f: Fighter, a: Dictionary) -> void:
 
 func apply_hit(attacker, d: Fighter, a: Dictionary, power: float, hit_pos: Vector3, dir: Vector3, ranged: bool) -> void:
 	var result := d.receive_hit(attacker, a, power)
+	if result in ["hit", "crit", "ko"]:
+		d.notify_passive_event("received_hit", attacker if attacker is Fighter else null)
+		if attacker is Fighter:
+			attacker.notify_passive_event("landed_hit", d)
+		var effect_id: String = String(a.get("apply_status", ""))
+		if effect_id != "" and randf() <= clampf(float(a.get("status_chance", 1.0)), 0.0, 1.0):
+			d.add_status(effect_id, maxi(int(a.get("status_stacks", 1)), 1), float(a.get("status_duration", -1.0)))
+	elif result == "blocked":
+		d.notify_passive_event("blocked", attacker if attacker is Fighter else null)
+		if attacker is Fighter:
+			attacker.notify_passive_event("blocked_attack", d)
+	elif result == "parry":
+		d.notify_passive_event("parried", attacker if attacker is Fighter else null)
+		if attacker is Fighter:
+			attacker.notify_passive_event("was_parried", d)
+	elif result == "guard_break":
+		d.notify_passive_event("guard_broken", attacker if attacker is Fighter else null)
 	var glow := Color(attacker.look.glow) if attacker is Fighter else Color.WHITE
 	var heavy: bool = bool(a.get("heavy", false)) or String(a.get("id", "")) == "l3"
 	var shield_pos := d.model.shield_node.global_position if d.model.shield_node else hit_pos
@@ -797,6 +820,8 @@ func apply_hit(attacker, d: Fighter, a: Dictionary, power: float, hit_pos: Vecto
 
 func _clash(a: Fighter, b: Fighter, pos: Vector3) -> void:
 	a.clash_recoil(); b.clash_recoil()
+	a.notify_passive_event("clashed", b)
+	b.notify_passive_event("clashed", a)
 	fx.sparks(pos, Color("#fff2c0"), 50, 10.0)
 	fx.ring(pos, Color("#ffe699"), 3.0, 0.45, 0.9)
 	fx.number(pos + Vector3(0, 0.45, 0), "CLASH!", Color("#ffe08a"), 1.3)
@@ -1033,7 +1058,7 @@ func hud() -> Dictionary:
 	# The spectator has no local fighter; show CPU A/CPU B in the two HUD bars.
 	var me: Fighter = local if local else (fighters[0] if not fighters.is_empty() else null)
 	var info := func(f: Fighter) -> Dictionary:
-		return {"id": Data.character(f.char_index).id, "name": f.look.name, "hp": f.hp, "max_hp": f.max_hp, "guard": f.guard, "max_guard": f.max_guard, "down": f.is_down(), "glow": f.look.glow, "fatigue": f.guard_fatigue}
+		return {"id": Data.character(f.char_index).id, "name": f.look.name, "hp": f.hp, "max_hp": f.max_hp, "guard": f.guard, "max_guard": f.max_guard, "down": f.is_down(), "glow": f.look.glow, "fatigue": f.guard_fatigue, "status": f.status_summary()}
 	var other: Fighter = null
 	if cfg.mode == "duel":
 		for f in fighters: if f != me: other = f

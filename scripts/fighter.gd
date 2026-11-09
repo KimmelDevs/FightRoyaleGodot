@@ -1,5 +1,7 @@
 class_name Fighter
 extends Node3D
+# FRG15A - status and passive runtime
+const STATUS_SCRIPT = preload("res://scripts/combat_status.gd")
 ## A playable fighter (port of the web game's fighter.ts). A brain (player input, CPU, or a
 ## remote player) fills `intent` every frame:
 ##   attack tap (release < HOLD_T) -> combo hit, chains into the next l-step
@@ -51,6 +53,7 @@ var char_index := 0
 var look: Dictionary
 var kit := ""
 var model: FighterModel
+var status_runtime
 var brain = null          ## object with think(f, dt)
 var opponent = null       ## Fighter or mob (untyped: duck-typed is_down()/position)
 var owner_peer := ""
@@ -156,6 +159,9 @@ func setup(index: int, loadout: Array = ["z", "x", "c"], emblem: Dictionary = {}
 	model = FighterModel.new()
 	add_child(model)
 	model.setup(look)
+	status_runtime = STATUS_SCRIPT.new()
+	add_child(status_runtime)
+	status_runtime.bind_host(self, String(c.id))
 
 func _apply_emblem(eid: String, level: int) -> void:
 	for e in Data.economy.emblems:
@@ -169,6 +175,24 @@ func _apply_emblem(eid: String, level: int) -> void:
 		cd_mult *= 1.0 - b.get("cd", 0.0) * l
 		move_speed *= 1.0 + b.get("speed", 0.0) * l
 
+# Status API used by later character installers and ability definitions.
+func add_status(effect_id: String, stacks: int = 1, seconds: float = -1.0) -> bool:
+	return status_runtime.apply_effect(effect_id, stacks, seconds) if status_runtime != null else false
+
+func notify_passive_event(event_id: String, other: Node = null) -> void:
+	if status_runtime != null:
+		status_runtime.on_event(event_id, other)
+
+func status_summary() -> String:
+	return status_runtime.short_label() if status_runtime != null else ""
+
+func receive_status_damage(amount: float) -> void:
+	if state == S.KO or amount <= 0.0:
+		return
+	hp = maxf(hp - amount, 0.0)
+	if hp <= 0.0:
+		_ko()
+
 func is_down() -> bool: return state == S.KO
 func chest() -> Vector3: return global_position + Vector3(0, 1.2, 0)
 func airborne() -> bool: return not on_ground and position.y > 0.7
@@ -181,6 +205,8 @@ func tick(dt: float) -> void:
 	if not on_ground: in_block = false
 	state_t += dt
 	_clock += dt
+	if status_runtime != null:
+		status_runtime.step(dt)
 	if guard_fatigue > 0 and dt > 0.0:
 		_fatigue_decay -= dt
 		if _fatigue_decay <= 0.0:
@@ -223,7 +249,7 @@ func tick(dt: float) -> void:
 	_vertical(dt)
 	if state != S.BLOCK:
 		_guard_delay -= dt
-		if _guard_delay <= 0.0: guard = minf(guard + GUARD_REGEN * dt, max_guard)
+		if _guard_delay <= 0.0: guard = minf(guard + GUARD_REGEN * dt * status_runtime.guard_regen_multiplier(), max_guard)
 	model.charge = minf(state_t / CHARGE_MAX, 1.0) if state == S.CHARGE else maxf(model.charge - dt * 4.0, 0.0)
 	_compute_pose()
 	model.play_pose(pose_name, pose_speed)
@@ -234,7 +260,7 @@ func add_guard_fatigue() -> void:
 
 func attack_time_multiplier() -> float:
 	# Each stack makes attack/skill execution 2% slower; maximum 10 stacks.
-	return 1.0 / maxf(1.0 - 0.02 * float(guard_fatigue), 0.5)
+	return (1.0 / maxf(1.0 - 0.02 * float(guard_fatigue), 0.5)) * status_runtime.attack_time_multiplier()
 
 ## True throughout the *entire* damaging window, not just on the first active frame.
 func active_melee() -> bool:
@@ -371,7 +397,7 @@ func _request_light() -> void:
 func _start_attack(aid: String) -> void:
 	atk_power = 1.0
 	if aid == "heavy" and state == S.CHARGE: atk_power = 1.0 + 0.5 * minf(state_t / CHARGE_MAX, 1.0)
-	atk_power *= dmg_mult * (RAGE_MULT if rage_t > 0.0 else 1.0)
+	atk_power *= dmg_mult * (RAGE_MULT if rage_t > 0.0 else 1.0) * status_runtime.outgoing_multiplier()
 	atk_id = aid
 	atk = attacks[aid]
 	atk_phase = 0
@@ -381,6 +407,9 @@ func _start_attack(aid: String) -> void:
 	if float(atk.self_jump) > 0.0 and atk.mode != "leap":
 		vel_y = float(atk.self_jump); on_ground = false
 	_set_state(S.ATTACK)
+	notify_passive_event("attack_started", opponent)
+	if aid in ["z", "x", "c", "v"]:
+		notify_passive_event("skill_started", opponent)
 
 func _attack_step() -> void:
 	var w: float = float(atk.wind) * attack_time_multiplier()
@@ -467,7 +496,7 @@ func _move(dt: float) -> void:
 		var v := 0.0
 		# FRG12A - explicit AI movement takes precedence over legacy auto-approach
 		if state == S.IDLE and auto_approach and brain != null and o and not o.is_down() and dist > ENGAGE and in_move.length_squared() < 0.0001:
-			v = walk_speed
+			v = walk_speed * status_runtime.movement_multiplier()
 			walking = on_ground
 		if state == S.ATTACK and not atk.is_empty() and atk_phase <= 1 and dist > MIN_DIST + 0.15:
 			v += float(atk.lunge)
@@ -485,7 +514,7 @@ func _move(dt: float) -> void:
 		var requested := Vector3.ZERO
 		if steer > 0.0 and in_move.length_squared() > 0.0001:
 			var sprint_now := in_sprint and state == S.IDLE and on_ground
-			var speed := move_speed * (SPRINT_MULT if sprint_now else 1.0)
+			var speed := move_speed * (SPRINT_MULT if sprint_now else 1.0) * status_runtime.movement_multiplier()
 			requested = in_move.normalized() * speed * steer
 			running = sprint_now
 		var response := GROUND_ACCEL if requested.length_squared() > 0.01 else GROUND_BRAKE
@@ -564,7 +593,7 @@ func receive_hit(attacker, a: Dictionary, power: float) -> String:
 	if invuln_t > 0.0: return "miss"
 	if ward_t > 0.0: return "warded"
 	if counter_t > 0.0: counter_t = 0.0; return "counter"
-	var dmg: float = float(a.dmg) * power
+	var dmg: float = float(a.dmg) * power * status_runtime.incoming_multiplier()
 	if state == S.BLOCK:
 		if state_t <= parry_window:
 			guard = minf(guard + max_guard * 0.10, max_guard)

@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "description": "No passives auto-enabled. Later installers add entries for retained browser fighters after roster verification.",
+  "supported_events": [
+    "attack_started",
+    "skill_started",
+    "landed_hit",
+    "received_hit",
+    "blocked_attack",
+    "blocked",
+    "was_parried",
+    "parried",
+    "guard_broken",
+    "clashed",
+    "projectile_destroyed"
+  ],
+  "profiles": {}
+}
