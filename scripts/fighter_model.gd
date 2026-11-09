@@ -9,6 +9,7 @@ const FALLBACK := {"m": "rook", "f": "ember"}  ## stand-ins until a fighter has 
 var look: Dictionary
 var kit := ""
 var skeleton: Skeleton3D
+var rig_profile: Dictionary = {} # FRG04 - rig mapper integrated
 var player: AnimationPlayer
 var motion: MotionLayer
 var vrm: Node3D
@@ -34,9 +35,22 @@ func setup(look_data: Dictionary) -> void:
 	var id: String = look.get("vrm", "")
 	if id == "" or not ResourceLoader.exists("res://models/%s.vrm" % id):
 		id = FALLBACK.get(look.get("body", "f"), "ember")
-	vrm = load("res://models/%s.vrm" % id).instantiate()
+	var vrm_resource: Resource = load("res://models/%s.vrm" % id)
+	if not (vrm_resource is PackedScene):
+		var fallback_id: String = str(FALLBACK.get(look.get("body", "f"), "ember"))
+		if fallback_id != id:
+			id = fallback_id
+			vrm_resource = load("res://models/%s.vrm" % id)
+	if not (vrm_resource is PackedScene):
+		push_error("Fight Royale: cannot import VRM model or its fallback: " + id)
+		return
+	vrm = (vrm_resource as PackedScene).instantiate()
 	add_child(vrm)
-	skeleton = vrm.find_children("*", "Skeleton3D", true, false)[0]
+	skeleton = FighterRig.find_skeleton(vrm)
+	if skeleton == null:
+		push_error("Fight Royale: VRM model has no imported Skeleton3D: " + id)
+		return
+	rig_profile = FighterRig.profile_for(id)
 	player = AnimationPlayer.new()
 	player.name = "Poses"
 	vrm.add_child(player)
@@ -44,6 +58,7 @@ func setup(look_data: Dictionary) -> void:
 	player.add_animation_library("", load("res://animations/%s.tres" % kit))
 	motion = MotionLayer.new()
 	motion.heavy = look.get("body", "f") == "m"
+	motion.bone_map = FighterRig.runtime_bone_map(skeleton, rig_profile)
 	skeleton.add_child(motion)
 	for m in vrm.find_children("*", "MeshInstance3D", true, false):
 		_meshes.append(m)
@@ -88,28 +103,10 @@ func flash(color := Color.WHITE, duration := 0.1) -> void:
 ## A frame in the hand: +Y runs out of the fist on the thumb side (where a held blade
 ## points), +X along the fingers. Built from this model's own finger bones.
 func _grip(side: String) -> Node3D:
-	var hand := skeleton.find_bone(side + "Hand")
-	var att := BoneAttachment3D.new()
-	att.bone_name = side + "Hand"
-	skeleton.add_child(att)
-	var hg := skeleton.get_bone_global_rest(hand)
-	var to_local := func(bone: String) -> Vector3:
-		return hg.affine_inverse() * skeleton.get_bone_global_rest(skeleton.find_bone(bone)).origin
-	var mid: Vector3 = to_local.call(side + "MiddleProximal")
-	var lateral: Vector3 = (to_local.call(side + "IndexProximal") - to_local.call(side + "LittleProximal")).normalized()
-	var fingers := mid.normalized()
-	var z := fingers.cross(lateral).normalized()
-	var x := lateral.cross(z).normalized()
-	var g := Node3D.new()
-	g.transform = Transform3D(Basis(x, lateral, z), mid * 0.55 + z * 0.02)
-	att.add_child(g)
-	return g
+	return FighterRig.make_grip(skeleton, side, rig_profile)
 
 func _foot(side: String) -> Node3D:
-	var att := BoneAttachment3D.new()
-	att.bone_name = side + "Foot"
-	skeleton.add_child(att)
-	return att
+	return FighterRig.make_foot(skeleton, side, rig_profile)
 
 func _mat(c: String, metal := false) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()

@@ -1,0 +1,34 @@
+FIGHT ROYALE - RIG MAPPING 04
+Models: 21 | complete: 21 | incomplete: 0 | unreadable: 0
+Fighters in roster: 17
+
+ash                    ok          54   bone roles / 513 skin joints
+aster                  ok          54   bone roles / 336 skin joints
+bob                    ok          54   bone roles / 381 skin joints
+ember                  ok          54   bone roles / 657 skin joints
+gale                   ok          54   bone roles / 384 skin joints
+garrick                ok          54   bone roles / 339 skin joints
+kaede                  ok          54   bone roles / 522 skin joints
+kaizen                 ok          54   bone roles / 375 skin joints
+kira                   ok          54   bone roles / 291 skin joints
+marina                 ok          54   bone roles / 564 skin joints
+nesa                   ok          54   bone roles / 483 skin joints
+nythera                ok          54   bone roles / 498 skin joints
+nyx                    ok          54   bone roles / 432 skin joints
+raven                  ok          54   bone roles / 618 skin joints
+rook                   ok          54   bone roles / 303 skin joints
+roxy                   ok          54   bone roles / 540 skin joints
+vesper                 ok          54   bone roles / 594 skin joints
+veyr                   ok          54   bone roles / 357 skin joints
+zarek                  ok          54   bone roles / 492 skin joints
+zenith                 ok          54   bone roles / 333 skin joints
+zephyr                 ok          54   bone roles / 387 skin joints
+
+WHAT CHANGED
+- Generated res://data/rig_profiles.json from each VRM humanoid map.
+- Added runtime canonical/source bone lookups and safer weapon grips.
+- Added MotionLayer support for dynamic bone names.
+- Added optional in-engine verification: tools/check_rigs_04.gd.
+
+No sounds, animation clips or VRM model bytes are changed.
+Missing finger bones use approximate wrist-based grips; visual tuning is planned for Update 05.

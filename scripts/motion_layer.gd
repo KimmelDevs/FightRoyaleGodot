@@ -9,22 +9,29 @@ var walk := 0.0             ## 0..1 walking blend
 var phase := 0.0            ## walk cycle phase (radians)
 var t := 0.0
 var heavy := false          ## male fighters: quieter idle
+var bone_map: Dictionary = {}  # FRG04 - dynamic humanoid lookups
 var _hips := -1
 var _legs := [-1, -1]
 var _chest := -1
 var _hip_rest := Vector3.ZERO
 var _scale := 1.0
 
+func _bone_name(sk: Skeleton3D, wanted: String) -> int:
+	var resolved: String = str(bone_map.get(wanted, wanted))
+	return sk.find_bone(resolved)
+
 func _ready() -> void:
 	var sk := get_skeleton()
 	if sk == null:
 		return
-	_hips = sk.find_bone("Hips")
-	_legs = [sk.find_bone("LeftUpperLeg"), sk.find_bone("RightUpperLeg")]
-	_chest = sk.find_bone("UpperChest")
+	_hips = _bone_name(sk, "Hips")
+	_legs = [_bone_name(sk, "LeftUpperLeg"), _bone_name(sk, "RightUpperLeg")]
+	_chest = _bone_name(sk, "UpperChest")
+	if _chest < 0:
+		_chest = _bone_name(sk, "Chest")
 	if _hips >= 0:
 		_hip_rest = sk.get_bone_rest(_hips).origin
-		_scale = sk.get_bone_global_rest(_hips).origin.y / 0.84  # web rig hip height was 0.84
+		_scale = maxf(absf(sk.get_bone_global_rest(_hips).origin.y) / 0.84, 0.15)
 
 func _process_modification() -> void:
 	var sk := get_skeleton()
@@ -42,7 +49,8 @@ func _process_modification() -> void:
 			var b: int = _legs[i]
 			if b < 0: continue
 			var swing := (1.0 if i == 0 else -1.0) * s * 0.55 * walk
-			var parent_g := sk.get_bone_global_pose(sk.get_bone_parent(b)).basis.get_rotation_quaternion()
+			var parent_idx: int = sk.get_bone_parent(b)
+			var parent_g := sk.get_bone_global_pose(parent_idx).basis.get_rotation_quaternion() if parent_idx >= 0 else Quaternion.IDENTITY
 			var cur_g := parent_g * sk.get_bone_pose_rotation(b)
 			var want := Quaternion(Vector3.RIGHT, swing) * cur_g
 			sk.set_bone_pose_rotation(b, (parent_g.inverse() * want).normalized())
