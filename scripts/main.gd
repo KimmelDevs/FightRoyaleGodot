@@ -108,6 +108,8 @@ func show_menu() -> void:
 	_text(v, "GODOT EDITION  •  1 VS 1 COMBAT", 20)
 	_btn(v, "Duel vs CPU", func(): _mode = "duel"; _pick_side = 0; show_select(), 320)
 	_btn(v, "CPU vs CPU", func(): _mode = "cpu_vs_cpu"; _pick_side = 0; show_select(), 320)
+	# FRG16A - interactive animation lab
+	_btn(v, "Animation Lab  ·  Edit Walk & Joints", func(): get_tree().change_scene_to_file("res://scenes/animation_lab.tscn"), 320)
 	_btn(v, "Settings / Keybinds", show_settings, 320)
 	_btn(v, "Quit", func(): get_tree().quit(), 320)
 	_text(v, "All fighters are selectable. No shop or currency system.", 14, Color("#a8b7d2"))

@@ -160,6 +160,8 @@ func setup(index: int, loadout: Array = ["z", "x", "c"], emblem: Dictionary = {}
 	guard_fatigue = 0; _fatigue_decay = FATIGUE_DECAY_SECONDS
 	model = FighterModel.new()
 	add_child(model)
+	# FRG16A - interactive animation lab
+	model.character_id = String(c.id)
 	model.setup(look)
 	status_runtime = STATUS_SCRIPT.new()
 	add_child(status_runtime)

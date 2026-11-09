@@ -1,11 +1,15 @@
 class_name FighterModel
 extends Node3D
+# FRG16A - interactive animation lab
+const LAB_PROFILES = preload("res://scripts/animation_lab_profiles.gd")
 ## A fighter's body: the VRoid model (humanoid Skeleton3D), its pose animations (one library
 ## per kit, editable in res://animations/<kit>.tres), a MotionLayer for walk/hips/breathing,
 ## and the weapons mounted on the hand bones.
 
 const FALLBACK := {"m": "rook", "f": "ember"}  ## stand-ins until a fighter has its own VRoid model
 
+var character_id := ""  # canonical fighter ID, not shared kit ID
+var lab_paused := false
 var look: Dictionary
 var kit := ""
 var skeleton: Skeleton3D
@@ -89,6 +93,7 @@ func setup(look_data: Dictionary) -> void:
 	motion = MotionLayer.new()
 	motion.heavy = look.get("body", "f") == "m"
 	motion.bone_map = FighterRig.runtime_bone_map(skeleton, rig_profile)
+	motion.lab_profile = LAB_PROFILES.load_for(character_id if not character_id.is_empty() else String(look.get("vrm", "")))
 	skeleton.add_child(motion)
 	for m in vrm.find_children("*", "MeshInstance3D", true, false):
 		_meshes.append(m)
@@ -163,7 +168,8 @@ var _hips_target := 0.0
 
 func _process(dt: float) -> void:
 	_t += dt
-	_phase += dt * (10.0 + 6.0 * run) * walk
+	if not lab_paused:
+		_phase += dt * (10.0 + 6.0 * run) * walk
 	if motion == null: return
 	motion.t = _t
 	motion.walk = walk

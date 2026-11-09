@@ -1,0 +1,10 @@
+Fight Royale - Update 16A: Animation Lab
+
+Open the Godot project and use the Animation Lab button in the main menu.
+Select a fighter and Idle/Walk/Run; click joint markers or use the bone list.
+Use X, Y, Z sliders for joint offsets, gait sliders for stride, knees, arms, hip bob.
+Save Fighter persists settings to user://animation_lab_profiles.json and (if writable)
+res://data/animation_lab_profiles.json. Battles use the character's saved profile.
+This is a live locomotion offset editor, not an AnimationPlayer keyframe timeline.
+It does not modify VRM skeletons, skin weights, weapons, combat, sound, or other modes.
+Godot in-engine rendering/playability still requires your local test.
