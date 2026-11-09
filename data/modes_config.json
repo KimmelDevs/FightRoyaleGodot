@@ -1,0 +1,17 @@
+{
+  "update_version": "02.0",
+  "modes": [
+    "duel",
+    "cpu_vs_cpu"
+  ],
+  "mode_labels": {
+    "duel": "Duel vs CPU",
+    "cpu_vs_cpu": "CPU vs CPU"
+  },
+  "all_characters_unlocked": true,
+  "shop_enabled": false,
+  "currency_rewards_enabled": false,
+  "match_engine_mode": "duel",
+  "spectator_implementation": "Both fighter peers begin with cpu so each receives AiBrain; no local fighter",
+  "limits": "AI personalities, hit timing and balance are inherited from the existing Godot source until later installers."
+}

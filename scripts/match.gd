@@ -161,7 +161,8 @@ func banner(text: String, color: Color, sub := "") -> void:
 # --- frame ---------------------------------------------------------------------------------
 
 func _unhandled_input(e: InputEvent) -> void:
-	_player_brain.on_event(e)
+	if not bool(cfg.get("spectator", false)):
+		_player_brain.on_event(e)
 
 func _process(real_dt: float) -> void:
 	real_dt = clampf(real_dt, 0.0, 0.05)
@@ -442,9 +443,11 @@ func _on_ko(f: Fighter) -> void:
 		add_trauma(0.8); hit_stop(0.9)
 		later(0.4, func():
 			winner.win()
+			var spectator_mode: bool = bool(cfg.get("spectator", false))
 			var won: bool = winner.owner_peer == cfg.local_peer
-			if not String(winner.owner_peer).begins_with("cpu"): ui_event.emit({"type": "reward", "reason": "duel", "gold": int(Data.economy.win_gold), "peer": winner.owner_peer})
-			ui_event.emit({"type": "over", "text": "VICTORY" if won else "DEFEAT", "sub": "Press R or click Rematch", "color": Color("#ffe08a") if won else Color("#ff7b7b")})
+			var result_text: String = ("%s WINS!" % winner.look.name) if spectator_mode else ("VICTORY" if won else "DEFEAT")
+			var result_color: Color = Color("#ffe08a") if spectator_mode or won else Color("#ff7b7b")
+			ui_event.emit({"type": "over", "text": result_text, "sub": "Press R or click Rematch", "color": result_color})
 			can_restart = true)
 	elif cfg.mode == "team":
 		fx.number(f.chest() + Vector3(0, 0.8, 0), "DOWN!", Color("#ff7b7b"), 1.1)
@@ -460,7 +463,7 @@ func _on_ko(f: Fighter) -> void:
 			for x in fighters:
 				if x.team == winner_team:
 					x.win()
-					if not String(x.owner_peer).begins_with("cpu"): ui_event.emit({"type": "reward", "reason": "team", "gold": int(Data.economy.win_gold), "peer": x.owner_peer})
+					# Legacy team mode no longer grants currency.
 			ui_event.emit({"type": "over", "text": "VICTORY" if winner_team == mine else "DEFEAT", "sub": "Team %s wins" % ("Blue" if winner_team == 0 else "Red"), "color": Color("#ffe08a") if winner_team == mine else Color("#ff7b7b")})
 			can_restart = true)
 
@@ -496,7 +499,8 @@ func _update_camera(dt: float) -> void:
 # --- HUD feed ------------------------------------------------------------------------------
 
 func hud() -> Dictionary:
-	var me := local
+	# The spectator has no local fighter; show CPU A/CPU B in the two HUD bars.
+	var me: Fighter = local if local else (fighters[0] if not fighters.is_empty() else null)
 	var info := func(f: Fighter) -> Dictionary:
 		return {"id": Data.character(f.char_index).id, "name": f.look.name, "hp": f.hp, "max_hp": f.max_hp, "guard": f.guard, "max_guard": f.max_guard, "down": f.is_down(), "glow": f.look.glow}
 	var other: Fighter = null

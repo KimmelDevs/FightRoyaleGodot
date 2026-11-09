@@ -62,6 +62,15 @@ func _ready() -> void:
 	pv.add_child(_button("Quit to menu", func(): set_paused(false); quit_to_menu.emit()))
 	_pause.hide()
 	match_node.ui_event.connect(_on_event)
+	if bool(match_node.cfg.get("spectator", false)):
+		_slots.hide()
+		_side_list.hide()
+		var spectator_title := _label(root, 19, Color("#ffe08a"))
+		spectator_title.set_anchors_preset(Control.PRESET_CENTER_TOP)
+		spectator_title.position = Vector2(-190, 14)
+		spectator_title.size = Vector2(380, 32)
+		spectator_title.text = "CPU VS CPU  -  SPECTATOR"
+
 
 func _label(parent: Node, size: int, color: Color) -> Label:
 	var l := Label.new()
@@ -159,8 +168,8 @@ func _on_event(e: Dictionary) -> void:
 			_over_sub.text = e.sub
 			_over.show()
 		"reward":
-			if e.peer == match_node.cfg.local_peer and has_node("/root/Profile"):
-				get_node("/root/Profile").add_gold(int(e.gold))
+			# Currency and shop are out of scope. No rewards are paid.
+			pass
 
 func _process(dt: float) -> void:
 	_banner_t -= dt
