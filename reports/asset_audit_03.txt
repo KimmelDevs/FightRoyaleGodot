@@ -1,0 +1,50 @@
+FIGHT ROYALE GODOT - ASSET AUDIT 03
+Generated: 2026-11-09T15:19:12+00:00
+Project: C:\Users\Admin\OneDrive\Documents\fight-royale-godot
+
+MODELS / FIGHTERS
+VRM files: 21, invalid: 0
+Fighters: 17, own models: 7, fallbacks: 10, unavailable: 0
+  aster          kit=knight       model=aster        [own_model]
+  vesper         kit=knight       model=vesper       [own_model]
+  garrick        kit=greatsword   model=garrick      [own_model]
+  kaede          kit=katana       model=kaede        [own_model]
+  ember          kit=mage         model=ember        [own_model]
+  marina         kit=mage         model=ember        [fallback]
+  volta          kit=mage         model=rook         [fallback]
+  sylva          kit=bow          model=ember        [fallback]
+  nyx            kit=assassin     model=ember        [fallback]
+  rook           kit=knuckles     model=rook         [own_model]
+  kira           kit=kicks        model=ember        [fallback]
+  leon           kit=greatsword   model=rook         [fallback]
+  sakura         kit=katana       model=ember        [fallback]
+  raven          kit=mage         model=raven        [own_model]
+  yuki           kit=mage         model=ember        [fallback]
+  bruno          kit=knuckles     model=rook         [fallback]
+  ash            kit=bow          model=rook         [fallback]
+
+ANIMATIONS
+Kits: 8
+  assassin       19 animations, 49 bone tracks [OK]
+  bow            13 animations, 49 bone tracks [OK]
+  greatsword     18 animations, 49 bone tracks [OK]
+  katana         18 animations, 49 bone tracks [OK]
+  kicks          18 animations, 49 bone tracks [OK]
+  knight         18 animations, 49 bone tracks [OK]
+  knuckles       24 animations, 49 bone tracks [OK]
+  mage           17 animations, 49 bone tracks [OK]
+
+SOUNDS
+Search folder: sfx
+Present from supplied list: 2218 / 2218
+Additional unlisted files: 74
+Suspect audio headers: 0
+
+ERRORS (0)
+WARNINGS (0)
+
+NOTES
+This is a static asset audit; only opening Godot can verify imported rigs, skins and animation playback.
+Missing roster-specific models use the same male/female stand-ins as the existing game.
+No game scripts, scenes, VRMs, sound files or animation sources were modified.
+Full details, including missing sound paths, are in reports/asset_audit_03.json.

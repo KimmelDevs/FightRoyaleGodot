@@ -2221,7 +2221,7 @@
   },
   "expected_count": 2218,
   "missing_count": 0,
-  "note": "Only available sounds are mapped. Future audio installer will assign gameplay events.",
+  "note": "Available sound files only; Update 18 will map game events to sounds.",
   "schema": 1,
   "sfx_root": "res://sfx",
   "unlisted_count": 74
