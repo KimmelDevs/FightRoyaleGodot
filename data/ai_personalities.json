@@ -1,0 +1,199 @@
+{
+  "version": "13A.1",
+  "description": "AI behavior only. Difficulty is preserved. Unlisted fighters inherit their kit archetype.",
+  "archetypes": {
+    "knight": {
+      "range_scale": 1.02,
+      "approach_scale": 0.92,
+      "orbit_scale": 0.7,
+      "retreat_scale": 0.75,
+      "block_scale": 1.27,
+      "parry_scale": 1.08,
+      "dodge_scale": 0.78,
+      "attack_pace": 0.94,
+      "skill_pace": 0.95,
+      "heavy_scale": 1.16
+    },
+    "greatsword": {
+      "range_scale": 1.09,
+      "approach_scale": 1.08,
+      "orbit_scale": 0.58,
+      "retreat_scale": 0.75,
+      "block_scale": 0.94,
+      "parry_scale": 1.02,
+      "dodge_scale": 0.77,
+      "attack_pace": 0.83,
+      "skill_pace": 0.92,
+      "heavy_scale": 1.42
+    },
+    "katana": {
+      "range_scale": 1.03,
+      "approach_scale": 1.02,
+      "orbit_scale": 1.23,
+      "retreat_scale": 0.96,
+      "block_scale": 0.94,
+      "parry_scale": 1.25,
+      "dodge_scale": 1.13,
+      "attack_pace": 1.17,
+      "skill_pace": 1.08,
+      "heavy_scale": 0.82
+    },
+    "mage": {
+      "range_scale": 1.1,
+      "approach_scale": 0.92,
+      "orbit_scale": 1.14,
+      "retreat_scale": 1.2,
+      "block_scale": 0.85,
+      "parry_scale": 0.76,
+      "dodge_scale": 1.22,
+      "attack_pace": 1.0,
+      "skill_pace": 1.27,
+      "heavy_scale": 0.89
+    },
+    "bow": {
+      "range_scale": 1.15,
+      "approach_scale": 0.9,
+      "orbit_scale": 1.06,
+      "retreat_scale": 1.25,
+      "block_scale": 0.82,
+      "parry_scale": 0.81,
+      "dodge_scale": 1.3,
+      "attack_pace": 1.07,
+      "skill_pace": 1.1,
+      "heavy_scale": 0.89
+    },
+    "assassin": {
+      "range_scale": 0.91,
+      "approach_scale": 1.23,
+      "orbit_scale": 1.44,
+      "retreat_scale": 1.05,
+      "block_scale": 0.77,
+      "parry_scale": 1.15,
+      "dodge_scale": 1.35,
+      "attack_pace": 1.3,
+      "skill_pace": 1.19,
+      "heavy_scale": 0.62
+    },
+    "knuckles": {
+      "range_scale": 0.91,
+      "approach_scale": 1.24,
+      "orbit_scale": 0.76,
+      "retreat_scale": 0.68,
+      "block_scale": 1.15,
+      "parry_scale": 0.95,
+      "dodge_scale": 0.96,
+      "attack_pace": 1.25,
+      "skill_pace": 1.03,
+      "heavy_scale": 1.13
+    },
+    "kicks": {
+      "range_scale": 1.0,
+      "approach_scale": 1.18,
+      "orbit_scale": 1.32,
+      "retreat_scale": 0.93,
+      "block_scale": 0.82,
+      "parry_scale": 1.09,
+      "dodge_scale": 1.37,
+      "attack_pace": 1.21,
+      "skill_pace": 1.11,
+      "heavy_scale": 0.92
+    }
+  },
+  "fighters": {
+    "aster": {
+      "block_scale": 1.39,
+      "orbit_scale": 0.59,
+      "heavy_scale": 1.1
+    },
+    "garrick": {
+      "approach_scale": 1.24,
+      "retreat_scale": 0.6,
+      "heavy_scale": 1.52
+    },
+    "kaede": {
+      "parry_scale": 1.38,
+      "orbit_scale": 1.3,
+      "attack_pace": 1.11
+    },
+    "ember": {
+      "retreat_scale": 1.33,
+      "skill_pace": 1.34,
+      "dodge_scale": 1.25
+    },
+    "marina": {
+      "range_scale": 1.17,
+      "retreat_scale": 1.2,
+      "block_scale": 1.05
+    },
+    "nyx": {
+      "attack_pace": 1.42,
+      "orbit_scale": 1.49,
+      "heavy_scale": 0.5
+    },
+    "rook": {
+      "block_scale": 1.34,
+      "approach_scale": 1.18,
+      "retreat_scale": 0.57
+    },
+    "kira": {
+      "orbit_scale": 1.49,
+      "dodge_scale": 1.44,
+      "attack_pace": 1.32
+    },
+    "ash": {
+      "retreat_scale": 1.2,
+      "range_scale": 1.1,
+      "skill_pace": 1.12
+    },
+    "raven": {
+      "skill_pace": 1.29,
+      "orbit_scale": 1.18,
+      "parry_scale": 0.83
+    },
+    "zarek": {
+      "archetype": "katana",
+      "approach_scale": 1.2,
+      "parry_scale": 1.24
+    },
+    "kaizen": {
+      "archetype": "greatsword",
+      "approach_scale": 1.24,
+      "heavy_scale": 1.31
+    },
+    "nythera": {
+      "archetype": "katana",
+      "range_scale": 1.18,
+      "orbit_scale": 1.24
+    },
+    "zenith": {
+      "archetype": "katana",
+      "range_scale": 1.15,
+      "skill_pace": 1.25
+    },
+    "zephyr": {
+      "archetype": "knuckles",
+      "parry_scale": 1.3,
+      "orbit_scale": 1.31
+    },
+    "roxy": {
+      "archetype": "mage",
+      "retreat_scale": 1.28,
+      "skill_pace": 1.29
+    },
+    "nesa": {
+      "archetype": "greatsword",
+      "approach_scale": 1.23,
+      "heavy_scale": 1.36
+    },
+    "veyr": {
+      "archetype": "katana",
+      "attack_pace": 1.21,
+      "parry_scale": 1.11
+    },
+    "renji": {
+      "archetype": "knuckles",
+      "parry_scale": 1.4,
+      "heavy_scale": 0.71
+    }
+  }
+}

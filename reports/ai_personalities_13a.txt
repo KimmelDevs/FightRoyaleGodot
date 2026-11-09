@@ -1,0 +1,19 @@
+FIGHT ROYALE GODOT — UPDATE 13A — AI PERSONALITIES
+
+This installer enhances BOTH Duel vs CPU and CPU vs CPU.
+Difficulty continues to determine skill, reaction speed, and consistency.
+Character archetype determines spacing, aggression, circling, guarding,
+parrying, dodging, combo pace, heavy preference, and skill frequency.
+
+Edit data/ai_personalities.json only if you want to tune personality values.
+Existing roster, abandoned-character placeholders, damage, ability kits,
+VRM files and animation scripts are untouched.
+
+This is the baseline archetype layer. Later 13B/13C updates may introduce
+more detailed per-character tactics once the final browser roster is known.
+
+CHECK IN GODOT:
+1. Aster vs Nyx on Hard: defensive knight vs mobile assassin.
+2. Ember vs Garrick on Master: ranged spacing vs aggressive approach.
+3. CPU vs CPU: verify neither fighter remains stuck circling indefinitely.
+4. Duel vs CPU: ensure choosing difficulty still changes reaction speed.

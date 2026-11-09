@@ -12,6 +12,10 @@ const PRESETS := [
 	{"block": 0.65, "parry": 0.3, "jump": 0.45, "react": [0.08, 0.16], "think": 0.7, "skill": [0.8, 1.6], "combo": 5},
 ]
 const RANGED := ["mage", "bow"]
+# FRG13A - fighter-specific AI personality profiles
+const PERSONALITY_FILE := "res://data/ai_personalities.json"
+var _personality: Dictionary = {}
+var _personality_loaded := false
 
 var p: Dictionary
 var threats  ## match: projectiles(), strikes(), now()
@@ -50,13 +54,41 @@ var _tactical_tries := 0
 
 func _init(match_ref, level: int) -> void:
 	threats = match_ref
-	p = PRESETS[clampi(level, 0, PRESETS.size() - 1)]
+	p = PRESETS[clampi(level, 0, PRESETS.size() - 1)].duplicate(true)
 
 static func _r(a: float, b: float) -> float: return a + randf() * (b - a)
+
+func _load_fighter_personality(f: Fighter) -> void:
+	# Resolve the actual roster ID, not a possibly reused VRM file name.
+	_personality_loaded = true
+	var fighter_id: String = String(Data.character(f.char_index).get("id", ""))
+	if not FileAccess.file_exists(PERSONALITY_FILE):
+		return
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(PERSONALITY_FILE))
+	if not (parsed is Dictionary):
+		push_warning("FRG13A: malformed personality JSON, using default CPU behavior")
+		return
+	var archetypes: Dictionary = parsed.get("archetypes", {})
+	var fighters: Dictionary = parsed.get("fighters", {})
+	var specific: Dictionary = fighters.get(fighter_id, {})
+	var archetype: String = String(specific.get("archetype", f.kit))
+	_personality = archetypes.get(archetype, {}).duplicate(true)
+	_personality.merge(specific, true)
+	# Apply personal tendencies as *bounded multipliers* to the difficulty
+	# preset. Easy stays Easy and Master stays Master.
+	p["block"] = clampf(float(p["block"]) * float(_personality.get("block_scale", 1.0)), 0.0, 0.88)
+	p["parry"] = clampf(float(p["parry"]) * float(_personality.get("parry_scale", 1.0)), 0.0, 0.52)
+	p["jump"] = clampf(float(p["jump"]) * float(_personality.get("dodge_scale", 1.0)), 0.0, 0.70)
+	p["think"] = clampf(float(p["think"]) / maxf(float(_personality.get("attack_pace", 1.0)), 0.5), 0.36, 2.3)
+	var skill_pace: float = maxf(float(_personality.get("skill_pace", 1.0)), 0.5)
+	var timings: Array = p["skill"]
+	p["skill"] = [maxf(float(timings[0]) / skill_pace, 0.4), maxf(float(timings[1]) / skill_pace, 0.7)]
 
 func think(f: Fighter, dt: float) -> void:
 	var o = f.opponent
 	if o == null or o.is_down(): return
+	if not _personality_loaded:
+		_load_fighter_personality(f)
 	# Count real elapsed time while a fighter is attacking, blocking or recovering.
 	_skill_cd = maxf(_skill_cd - dt, 0.0)
 	# An interrupted windup must not resume an old combo, parry or delayed dodge.
@@ -290,24 +322,27 @@ func _position(f: Fighter, o, dt: float) -> void:
 	var desired := Vector3.ZERO
 	var ranged: bool = f.kit in RANGED
 	var preferred: float = _preferred_range(f)
+	var orbit: float = clampf(float(_personality.get("orbit_scale", 1.0)), 0.4, 1.8)
+	var approach: float = clampf(float(_personality.get("approach_scale", 1.0)), 0.6, 1.6)
+	var retreat: float = clampf(float(_personality.get("retreat_scale", 1.0)), 0.5, 1.6)
 	if ranged:
 		# Ranged fighters kite only when threatened at close range; otherwise
 		# they actively re-enter their usable firing zone instead of fleeing forever.
 		if dist < preferred - 0.9:
-			desired = -toward * 0.85 + sideways * _orbit_sign * 0.5
+			desired = -toward * (0.85 * retreat) + sideways * _orbit_sign * (0.5 * orbit)
 		elif dist > preferred + 1.0:
-			desired = toward * 0.95 + sideways * _orbit_sign * 0.2
+			desired = toward * (0.95 * approach) + sideways * _orbit_sign * (0.2 * orbit)
 		else:
-			desired = sideways * _orbit_sign * 0.48
+			desired = sideways * _orbit_sign * (0.48 * orbit)
 	else:
 		# Melee fighters approach to actual light-attack reach rather than
 		# stopping at a global distance that can be wrong for their weapon.
 		if dist > preferred + 0.18:
-			desired = toward
+			desired = toward * approach + sideways * _orbit_sign * (0.12 * orbit)
 		elif dist < 1.08:
-			desired = sideways * _orbit_sign * 0.75 - toward * 0.12
+			desired = sideways * _orbit_sign * (0.75 * orbit) - toward * 0.12
 		else:
-			desired = sideways * _orbit_sign * 0.32
+			desired = sideways * _orbit_sign * (0.32 * orbit)
 		# Run to a distant opponent, especially a ranged fighter.
 		f.in_sprint = dist > 4.2 and f.state == Fighter.S.IDLE
 	# FRG12C - short proactive adjustments, always subject to edge steering.
@@ -334,10 +369,13 @@ func _position(f: Fighter, o, dt: float) -> void:
 		f.in_move = desired.normalized()
 
 func _preferred_range(f: Fighter) -> float:
+	var base: float = 0.0
 	if f.kit in RANGED:
-		return 5.0 if f.kit == "mage" else 5.5
-	var light: Dictionary = f.attacks.get("l1", {})
-	return clampf(float(light.get("reach", 1.8)) - 0.15, 1.2, 2.4)
+		base = 5.0 if f.kit == "mage" else 5.5
+	else:
+		var light: Dictionary = f.attacks.get("l1", {})
+		base = clampf(float(light.get("reach", 1.8)) - 0.15, 1.2, 2.4)
+	return base * clampf(float(_personality.get("range_scale", 1.0)), 0.75, 1.3)
 
 func _usable_skill(f: Fighter, o: Fighter, key: String, dist: float) -> bool:
 	if float(f.cooldowns.get(key, 999.0)) > 0.0:
@@ -471,6 +509,7 @@ func _offense(f: Fighter, o, dt: float) -> void:
 	# Heavy swings are poor choices against a distant or mobile target.
 	if not ranged and dist > float(light.get("reach", 1.8)) - 0.1:
 		heavy_chance *= 0.6
+	heavy_chance = clampf(heavy_chance * float(_personality.get("heavy_scale", 1.0)), 0.03, 0.65)
 	var spending_punish: bool = _punish_t > 0.0 and not ranged
 	if randf() < heavy_chance:
 		_queue.append([0.0, Fighter.HOLD_T + _r(0.26, 0.55)])
