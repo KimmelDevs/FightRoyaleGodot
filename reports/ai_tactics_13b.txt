@@ -1,0 +1,12 @@
+FIGHT ROYALE GODOT — UPDATE 13B: TACTICAL AI IDENTITIES
+
+Requires 13A, 12D. Both Duel vs CPU and CPU vs CPU use this AI.
+Adds:
+ - Brief, cooldown-limited guard-recovery sidesteps for melee CPU fighters
+ - Controlled pressure against opponents with weak guard
+ - Heavy-attack preference against low-guard blockers (but not for whiff punishes)
+ - Per-fighter skill weights for Hard/Master's tactical skill selector
+
+Values are editable in data/ai_tactics_13b.json.
+No fighter, skill, damage, VRM, animation, audio or game-mode files were changed.
+Godot itself should be opened and a few CPU matches tested after installing.

@@ -14,8 +14,13 @@ const PRESETS := [
 const RANGED := ["mage", "bow"]
 # FRG13A - fighter-specific AI personality profiles
 const PERSONALITY_FILE := "res://data/ai_personalities.json"
+# FRG13B - tactical identity (guard reset, pressure and skill bias)
+const TACTICS_FILE := "res://data/ai_tactics_13b.json"
 var _personality: Dictionary = {}
 var _personality_loaded := false
+var _tactics: Dictionary = {}
+var _guard_reset_t := 0.0
+var _guard_reset_cd := 0.0
 
 var p: Dictionary
 var threats  ## match: projectiles(), strikes(), now()
@@ -74,6 +79,16 @@ func _load_fighter_personality(f: Fighter) -> void:
 	var archetype: String = String(specific.get("archetype", f.kit))
 	_personality = archetypes.get(archetype, {}).duplicate(true)
 	_personality.merge(specific, true)
+	# FRG13B - load per-fighter tactical preferences safely; no file is required
+	if FileAccess.file_exists(TACTICS_FILE):
+		var tactics_data: Variant = JSON.parse_string(FileAccess.get_file_as_string(TACTICS_FILE))
+		if tactics_data is Dictionary:
+			var common: Dictionary = tactics_data.get("archetypes", {})
+			var unique: Dictionary = tactics_data.get("fighters", {})
+			_tactics = common.get(archetype, {}).duplicate(true)
+			_tactics.merge(unique.get(fighter_id, {}), true)
+		else:
+			push_warning("FRG13B: invalid tactical JSON; defaults will be used")
 	# Apply personal tendencies as *bounded multipliers* to the difficulty
 	# preset. Easy stays Easy and Master stays Master.
 	p["block"] = clampf(float(p["block"]) * float(_personality.get("block_scale", 1.0)), 0.0, 0.88)
@@ -262,6 +277,17 @@ func _analyze_openings(f: Fighter, o: Fighter, dt: float) -> void:
 	var offset: Vector3 = o.position - f.position
 	offset.y = 0.0
 	var distance: float = offset.length()
+	# FRG13B - one brief guard recovery step, never a persistent retreat
+	_guard_reset_t = maxf(_guard_reset_t - dt, 0.0)
+	_guard_reset_cd = maxf(_guard_reset_cd - dt, 0.0)
+	# Guard reset is brief and on cooldown. Don't retreat indefinitely or
+	# interrupt an enemy attack, a whiff punish, or anti-stall engagement.
+	var guard_threshold: float = clampf(float(_tactics.get("guard_reset_threshold", 0.18)), 0.06, 0.40)
+	if _guard_reset_cd <= 0.0 and _guard_reset_t <= 0.0 and f.kit not in RANGED:
+		if f.guard < f.max_guard * guard_threshold and f.state == Fighter.S.IDLE and o.state == Fighter.S.IDLE and _engage_t <= 0.0 and _punish_t <= 0.0:
+			if distance < _preferred_range(f) + 0.75:
+				_guard_reset_t = 0.38
+				_guard_reset_cd = 4.0
 	# Read an attack ONCE, after its actual active window. A blocked/parried
 	# hit or melee clash is a contact, NOT a whiff. Missing the opponent must
 	# leave the attacker in recovery for the CPU to capitalize.
@@ -354,6 +380,15 @@ func _position(f: Fighter, o, dt: float) -> void:
 		f.in_sprint = not ranged and dist > 3.0
 	elif _bait_t > 0.0 and not ranged:
 		desired = -toward * 0.32 + sideways * _orbit_sign * 0.62
+	# FRG13B - short guard-reset sidestep and controlled guard-break pressure
+	# Both decisions still pass through the existing edge-avoidance code.
+	if _guard_reset_t > 0.0 and not ranged and _punish_t <= 0.0 and _engage_t <= 0.0 and o.state == Fighter.S.IDLE:
+		desired = sideways * (_orbit_sign * 0.70) - toward * 0.48
+	elif not ranged and f.state == Fighter.S.IDLE and _punish_t <= 0.0:
+		var pressure: float = clampf(float(_tactics.get("guard_pressure", 1.0)), 0.3, 1.6)
+		var broken_guard: bool = o.guard < o.max_guard * 0.33 and o.state in [Fighter.S.IDLE, Fighter.S.BLOCK]
+		if broken_guard and dist > preferred - 0.12 and dist < preferred + 1.9:
+			desired = toward * pressure + sideways * (_orbit_sign * 0.08)
 	# Do not retreat forever along the ring. Both classes must steer inward
 	# at the boundary, even when the enemy is pushing from the center.
 	var from_center := Vector3(f.position.x, 0.0, f.position.z)
@@ -416,6 +451,9 @@ func _select_tactical_skill(f: Fighter, o: Fighter, dist: float) -> String:
 		var ability: Dictionary = f.attacks.get(key, {})
 		var kind: String = String(ability.get("type", ""))
 		var score: float = 0.25 + randf_range(-0.10, 0.10)
+		# FRG13B - character preference never overrides range/cooldown eligibility
+		var preferred_skills: Dictionary = _tactics.get("skill_bias", {})
+		score += clampf(float(preferred_skills.get(key, 0.0)), -0.3, 0.3)
 		match kind:
 			"melee":
 				var reach: float = float(ability.get("reach", 2.0))
@@ -510,6 +548,11 @@ func _offense(f: Fighter, o, dt: float) -> void:
 	if not ranged and dist > float(light.get("reach", 1.8)) - 0.1:
 		heavy_chance *= 0.6
 	heavy_chance = clampf(heavy_chance * float(_personality.get("heavy_scale", 1.0)), 0.03, 0.65)
+	# FRG13B - heavy strikes are more attractive against guard-starved foes.
+	# Always leave genuine whiff punishes fast (from Update 12C).
+	if _punish_t <= 0.0 and o.state == Fighter.S.BLOCK and o.guard < o.max_guard * 0.40:
+		var break_bias: float = clampf(float(_tactics.get("guard_break_bias", 1.0)), 0.35, 1.6)
+		heavy_chance = clampf(heavy_chance + 0.10 * break_bias, 0.03, 0.68)
 	var spending_punish: bool = _punish_t > 0.0 and not ranged
 	if randf() < heavy_chance:
 		_queue.append([0.0, Fighter.HOLD_T + _r(0.26, 0.55)])
