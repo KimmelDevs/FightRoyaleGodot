@@ -29,6 +29,9 @@ var _skill_cd := 2.0
 var _seen_swing := -1
 var _seen_charge := false
 var _seen := {}
+# FRG12B - predicted projectile defense and melee interception
+var _projectile_dodge_wait := -1.0
+var _projectile_dodge_dir := Vector3.ZERO
 # FRG12A - deliberate spacing and cooldown-aware neutral AI
 var _orbit_sign := 1.0
 var _orbit_timer := 0.0
@@ -45,6 +48,11 @@ func think(f: Fighter, dt: float) -> void:
 	if o == null or o.is_down(): return
 	if o is Fighter: _react(f, o)
 	_dodge(f)
+	# Resolve projectile dodge at the predicted interception time.
+	if _projectile_dodge_wait >= 0.0:
+		_projectile_dodge_wait -= dt
+		if _projectile_dodge_wait < 0.0:
+			f.in_dodge = _projectile_dodge_dir
 	_position(f, o, dt)
 	_offense(f, o, dt)
 	if _jump_wait >= 0.0:
@@ -87,21 +95,106 @@ func _react(f: Fighter, o: Fighter) -> void:
 	elif not charging: _seen_charge = false
 
 func _dodge(f: Fighter) -> void:
+	# FRG12B - predict the closest approach to the fighter, NOT simply the
+	# projectile's distance from the fighter at the current frame.  React only
+	# when a projectile is actually on a collision course.
 	for pr in threats.projectile_threats():
-		if pr.target != f or _seen.has(pr.id): continue
+		if pr.target != f or _seen.has(pr.id):
+			continue
+		var velocity: Vector3 = pr.vel
+		var speed_squared: float = velocity.length_squared()
+		if speed_squared < 0.01:
+			continue
+		var toward: Vector3 = f.chest() - pr.pos
+		var eta: float = toward.dot(velocity) / speed_squared
+		if eta <= 0.0 or eta > 1.25:
+			continue
+		var closest: Vector3 = pr.pos + velocity * eta
+		var danger_radius: float = f.radius + 0.30 * float(pr.get("size", 1.0)) + 0.12
+		if closest.distance_to(f.chest()) > danger_radius:
+			continue
+		# Wait for a safe opening: hitstun, attacks, and recovery have priority
+		# over newly planned reactions. Never cancel a scheduled defense with
+		# an unrelated second projectile.
+		if f.state != Fighter.S.IDLE and f.state != Fighter.S.BLOCK:
+			continue
+		if _block_wait >= 0.0 or _block_hold > 0.0 or _projectile_dodge_wait >= 0.0:
+			continue
+		var reaction: float = _r(float(p.react[0]), float(p.react[1]))
+		if eta <= reaction + 0.02:
+			_seen[pr.id] = true
+			continue  # Too late for this CPU's reaction time.
+		var incoming_horizontal := Vector3(-velocity.x, 0.0, -velocity.z)
+		var facing_ok: bool = incoming_horizontal.length_squared() <= 0.01 or f.forward().dot(incoming_horizontal.normalized()) >= 0.20
+		# Skilled melee AI can intentionally time a LIGHT attack to intercept a
+		# non-explosive projectile. The match validates the actual active-frame
+		# collision. This is not a guaranteed or instantly triggered defense.
+		if facing_ok and _try_projectile_clash(f, pr, eta, reaction):
+			_seen[pr.id] = true
+			continue
+		var can_guard: bool = facing_ok and f.on_ground and f.guard > 8.0 and f.state == Fighter.S.IDLE
+		var can_dodge: bool = f.on_ground and f._dodge_cd <= 0.0 and f.state == Fighter.S.IDLE
+		if can_guard and eta > reaction + 0.06 and randf() < float(p.parry):
+			var start: float = maxf(reaction, eta - minf(f.parry_window * 0.60, 0.095))
+			if start < eta - 0.02:
+				_schedule(start, maxf(0.19, eta - start + 0.10))
+				_seen[pr.id] = true
+				continue
+		if can_dodge and randf() < float(p.jump):
+			var sideways := Vector3(-velocity.z, 0.0, velocity.x).normalized()
+			if sideways.length_squared() < 0.01:
+				sideways = Vector3(-f.forward().z, 0.0, f.forward().x)
+			# Dodge inward when near the edge instead of rolling out of bounds.
+			var plus: Vector3 = f.position + sideways * 1.8
+			var minus: Vector3 = f.position - sideways * 1.8
+			_projectile_dodge_dir = sideways if plus.length_squared() < minus.length_squared() else -sideways
+			_projectile_dodge_wait = maxf(reaction, eta - 0.18)
+			_seen[pr.id] = true
+			continue
+		if can_guard and randf() < float(p.block):
+			_schedule(reaction, eta - reaction + 0.25)
+			_seen[pr.id] = true
+			continue
+		if f.on_ground and eta > reaction + 0.24 and randf() < float(p.jump):
+			_jump_wait = maxf(reaction, eta - 0.34)
 		_seen[pr.id] = true
-		var eta: float = f.chest().distance_to(pr.pos) / maxf(pr.vel.length(), 0.1)
-		var r := randf()
-		if r < p.jump and f.on_ground: _jump_wait = maxf(eta - 0.28, 0.0)
-		elif r < p.jump + p.block: _schedule(minf(maxf(eta - 0.2, 0.0), p.react[1]), eta + 0.2)
+	# Keep the existing warning-marker/area-strike evasions.
 	for m in threats.strike_threats():
-		if m.target != f or _seen.has(m.id): continue
+		if m.target != f or _seen.has(m.id):
+			continue
 		_seen[m.id] = true
 		var eta: float = m.land - threats.now()
-		if randf() < 0.3 + p.jump:
-			_side_t = clampf(eta, 0.3, 0.8); _side_sign = 1.0 if randf() < 0.5 else -1.0
-		elif randf() < 0.5: _jump_wait = maxf(eta - 0.3, 0.0)
-	if _seen.size() > 300: _seen.clear()
+		if randf() < 0.3 + float(p.jump):
+			_side_t = clampf(eta, 0.3, 0.8)
+			_side_sign = 1.0 if randf() < 0.5 else -1.0
+		elif randf() < 0.5:
+			_jump_wait = maxf(eta - 0.3, 0.0)
+	if _seen.size() > 300:
+		_seen.clear()
+
+func _try_projectile_clash(f: Fighter, pr: Dictionary, eta: float, reaction: float) -> bool:
+	if f.kit in RANGED or f.state != Fighter.S.IDLE or not f.on_ground:
+		return false
+	if f.atk_lock > 0.0 or _hold > 0.0 or not _queue.is_empty():
+		return false
+	if bool(pr.get("pierce", false)):
+		return false
+	var style: String = String(pr.get("style", ""))
+	if style in ["explosion", "bomb", "meteor", "grenade", "rocket"]:
+		return false
+	var light: Dictionary = f.attacks.get("l1", {})
+	if String(light.get("type", "")) != "melee":
+		return false
+	var wind: float = float(light.get("wind", 0.20)) * f.attack_time_multiplier()
+	if eta < reaction + wind + 0.12:
+		return false
+	# More accurate and frequent interception on Hard/Master than on Easy.
+	var chance: float = 0.36 if float(p.think) < 0.8 else 0.20 if float(p.think) <= 1.0 else 0.08 if float(p.think) < 1.5 else 0.0
+	if randf() >= chance:
+		return false
+	var wait_time: float = maxf(reaction, eta - wind - 0.095)
+	_queue.append([wait_time, 0.06])
+	return true
 
 func _position(f: Fighter, o, dt: float) -> void:
 	# Every CPU issues explicit movement intents; Fighter._move handles the

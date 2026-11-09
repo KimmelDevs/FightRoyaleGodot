@@ -341,7 +341,7 @@ func add_trauma(x: float) -> void:
 # --- AI threat feeds ---------------------------------------------------------------------
 
 func projectile_threats() -> Array:
-	return _projectiles.map(func(p): return {"target": p.target, "pos": p.node.global_position, "vel": p.vel, "id": p.id})
+	return _projectiles.map(func(p): return {"target": p.target, "pos": p.node.global_position, "vel": p.vel, "id": p.id, "size": p.size, "style": String(p.atk.get("style", "")), "pierce": bool(p.pierce)})
 
 func strike_threats() -> Array:
 	return _strike_marks
@@ -451,6 +451,33 @@ func _update_projectiles(dt: float) -> void:
 		node.global_position += p.vel * dt
 		p.life -= dt
 		var done := false
+		# FRG12B - predicted projectile defense and melee interception - melee-vs-projectile clash. No free block: only an actual
+		# active melee swing facing the incoming bolt can destroy it. Explosive
+		# and piercing projectiles retain their original collision behavior.
+		var style: String = String(p.atk.get("style", ""))
+		if not bool(p.pierce) and not (style in ["explosion", "bomb", "meteor", "grenade", "rocket"]):
+			for defender in fighters:
+				if defender.team == p.team or defender.is_down() or not defender.active_melee():
+					continue
+				var cut: Vector3 = _swept_projectile_point(defender.chest(), old_pos, node.global_position)
+				var local_cut: Vector3 = cut - defender.global_position
+				if local_cut.y < 0.55 or local_cut.y > 2.2:
+					continue
+				local_cut.y = 0.0
+				var reach: float = clampf(float(defender.atk.get("reach", 1.8)) * 0.65, 0.8, 1.45)
+				if local_cut.length() > reach:
+					continue
+				if local_cut.length() > 0.1 and local_cut.normalized().dot(defender.forward()) < 0.25:
+					continue
+				fx.sparks(cut, Color(defender.look.glow), 18, 5.0, -p.vel.normalized())
+				fx.ring(cut, Color("#ffe6a4"), 0.85, 0.2, 0.65)
+				fx.number(cut + Vector3(0, 0.22, 0), "CLASH!", Color("#ffe6a4"), 0.65)
+				done = true
+				break
+		if done:
+			node.queue_free()
+			_projectiles.erase(p)
+			continue
 		for e in fighters:
 			if e.team == p.team or e.is_down() or p.hit.has(e.id): continue
 			var contact: Vector3 = _swept_projectile_point(e.chest(), old_pos, node.global_position)

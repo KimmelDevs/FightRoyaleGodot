@@ -1,0 +1,22 @@
+FIGHT ROYALE GODOT — UPDATE 12B: PREDICTIVE PROJECTILE DEFENSE
+
+Requires Update 12A. Compatible with Duel vs CPU and CPU vs CPU.
+
+WHAT CHANGED
+- Projectile AI checks direction and closest point of approach; near misses are ignored.
+- Difficulty reaction delays are respected before choosing a defensive action.
+- AI may time its parry, hold a block, dodge sideways, or jump.
+- Melee AI on Hard/Master can time a light swing to collide with an incoming shot.
+- A projectile can be destroyed only by a REAL active melee swing facing it.
+- Piercing and explosion-style shots cannot be removed by this clash mechanism.
+- Neither damage nor cooldown values have been modified.
+
+TESTS IN GODOT
+1. Place a melee CPU opposite a ranged CPU (try Master on the melee side).
+2. Watch for deliberate sword-vs-projectile clashes as well as parries/dodges.
+3. Try Easy: noticeably slower reactions than Master.
+4. Test Duel vs CPU, spectator pause and rematch.
+5. Check Godot's Debugger/Output for errors or import warnings.
+
+This report is a static installer result. Engine compilation and gameplay must
+still be verified locally with Godot; Python tests do not prove that Godot runs.
