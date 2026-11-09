@@ -395,6 +395,9 @@ func _melee(f: Fighter, a: Dictionary) -> void:
 			and dist <= minf(float(a.reach), float(d.atk.reach)) + 0.3 \
 			and (dist <= 0.6 or (-dir).dot(d.forward()) >= MELEE_FRONT_DOT):
 			landed[d.id] = true
+			# FRG12C - record confirmed melee contact for AI recovery reads
+			f.last_melee_contact_serial = f.swing_serial
+			d.last_melee_contact_serial = d.swing_serial
 			_melee_hits[contact_key] = landed
 			var other_key := "%d:%d" % [d.id, d.swing_serial]
 			var other_landed: Dictionary = _melee_hits.get(other_key, {})
@@ -406,6 +409,7 @@ func _melee(f: Fighter, a: Dictionary) -> void:
 			continue
 		# Record contact BEFORE hit handling (which can trigger counters/KO).
 		landed[d.id] = true
+		f.last_melee_contact_serial = f.swing_serial
 		_melee_hits[contact_key] = landed
 		apply_hit(f, d, a, f.atk_power, d.chest() - dir * 0.15, dir, false)
 

@@ -36,6 +36,15 @@ var _projectile_dodge_dir := Vector3.ZERO
 var _orbit_sign := 1.0
 var _orbit_timer := 0.0
 var _close_pressure_timer := 0.0
+# FRG12C - grounded whiff punishment, short bait and anti-stalling
+var _seen_recovery_serial := -1
+var _last_self_attack_serial := -1
+var _last_enemy_attack_serial := -1
+var _punish_t := 0.0
+var _bait_t := 0.0
+var _bait_cd := 2.4
+var _idle_standoff_t := 0.0
+var _engage_t := 0.0
 
 func _init(match_ref, level: int) -> void:
 	threats = match_ref
@@ -53,6 +62,7 @@ func think(f: Fighter, dt: float) -> void:
 		_projectile_dodge_wait -= dt
 		if _projectile_dodge_wait < 0.0:
 			f.in_dodge = _projectile_dodge_dir
+	_analyze_openings(f, o, dt)
 	_position(f, o, dt)
 	_offense(f, o, dt)
 	if _jump_wait >= 0.0:
@@ -196,6 +206,53 @@ func _try_projectile_clash(f: Fighter, pr: Dictionary, eta: float, reaction: flo
 	_queue.append([wait_time, 0.06])
 	return true
 
+func _analyze_openings(f: Fighter, o: Fighter, dt: float) -> void:
+	# Timers are real seconds, not frame counts, and never grant an instant hit.
+	_punish_t = maxf(_punish_t - dt, 0.0)
+	_bait_t = maxf(_bait_t - dt, 0.0)
+	_bait_cd = maxf(_bait_cd - dt, 0.0)
+	_engage_t = maxf(_engage_t - dt, 0.0)
+	var offset: Vector3 = o.position - f.position
+	offset.y = 0.0
+	var distance: float = offset.length()
+	# Read an attack ONCE, after its actual active window. A blocked/parried
+	# hit or melee clash is a contact, NOT a whiff. Missing the opponent must
+	# leave the attacker in recovery for the CPU to capitalize.
+	if o.state == Fighter.S.ATTACK and o.atk_phase == 2 and String(o.atk.get("type", "")) == "melee":
+		if o.swing_serial != _seen_recovery_serial:
+			_seen_recovery_serial = o.swing_serial
+			if o.last_melee_contact_serial != o.swing_serial and distance < 4.4:
+				# Hard/Master see openings more consistently; lower CPUs are less
+				# likely to notice a miss in time. Recovery still must be reachable.
+				var read_chance: float = 0.86 if float(p.think) <= 0.75 else 0.60 if float(p.think) <= 1.0 else 0.26 if float(p.think) < 1.5 else 0.10
+				if randf() < read_chance:
+					_punish_t = 0.78 if float(p.think) <= 0.75 else 0.58
+					_bait_t = 0.0
+					_think_cd = minf(_think_cd, 0.035)
+	# Never enter prolonged circling when neither fighter has committed.
+	var acted: bool = f.swing_serial != _last_self_attack_serial or o.swing_serial != _last_enemy_attack_serial
+	_last_self_attack_serial = f.swing_serial
+	_last_enemy_attack_serial = o.swing_serial
+	if acted or f.state != Fighter.S.IDLE or o.state != Fighter.S.IDLE:
+		_idle_standoff_t = 0.0
+	else:
+		_idle_standoff_t += dt
+	var standoff_limit: float = 3.2 if float(p.think) <= 1.0 else 4.7
+	if _idle_standoff_t > standoff_limit:
+		_engage_t = 1.6
+		_idle_standoff_t = 0.0
+		_bait_t = 0.0
+	# Bait is a short footwork hesitation, never a fake damaging attack.
+	# Keep it rare and disabled for Easy/Normal to avoid passive AI duels.
+	if float(p.think) <= 1.0 and _bait_cd <= 0.0:
+		_bait_cd = _r(3.2, 5.2)
+		var reach: float = _preferred_range(f)
+		var can_bait: bool = not (f.kit in RANGED) and not (o.kit in RANGED) and f.state == Fighter.S.IDLE and o.state == Fighter.S.IDLE and distance >= reach and distance < reach + 1.25 and _engage_t <= 0.0 and _punish_t <= 0.0
+		if can_bait and randf() < 0.36:
+			_bait_t = _r(0.28, 0.48)
+	if o.state != Fighter.S.IDLE or f.state != Fighter.S.IDLE:
+		_bait_t = 0.0
+
 func _position(f: Fighter, o, dt: float) -> void:
 	# Every CPU issues explicit movement intents; Fighter._move handles the
 	# acceleration, footwork and arena clamp. Keep behavior independent of FPS.
@@ -238,6 +295,15 @@ func _position(f: Fighter, o, dt: float) -> void:
 			desired = sideways * _orbit_sign * 0.32
 		# Run to a distant opponent, especially a ranged fighter.
 		f.in_sprint = dist > 4.2 and f.state == Fighter.S.IDLE
+	# FRG12C - short proactive adjustments, always subject to edge steering.
+	if _punish_t > 0.0 and not ranged and dist > preferred - 0.12:
+		desired = toward * 1.0 + sideways * _orbit_sign * 0.10
+		f.in_sprint = dist > 3.0
+	elif _engage_t > 0.0 and dist > (2.8 if ranged else preferred - 0.1):
+		desired = toward * 1.0 + sideways * _orbit_sign * 0.10
+		f.in_sprint = not ranged and dist > 3.0
+	elif _bait_t > 0.0 and not ranged:
+		desired = -toward * 0.32 + sideways * _orbit_sign * 0.62
 	# Do not retreat forever along the ring. Both classes must steer inward
 	# at the boundary, even when the enemy is pushing from the center.
 	var from_center := Vector3(f.position.x, 0.0, f.position.z)
@@ -299,9 +365,15 @@ func _offense(f: Fighter, o, dt: float) -> void:
 	var ranged: bool = f.kit in RANGED
 	var light: Dictionary = f.attacks.get("l1", {})
 	var reach: float = 10.0 if ranged else float(light.get("reach", 1.8)) + 0.35
+	# A bait delays offense briefly, but an actual missed attack cancels it.
+	if _bait_t > 0.0 and _punish_t <= 0.0:
+		return
+	# Punish a genuine miss with a prompt, usually light, melee response.
+	if _punish_t > 0.0 and not ranged and dist <= reach:
+		_think_cd = minf(_think_cd, 0.035)
 	# Try an off-cooldown skill only if the position and its action type fit.
 	_skill_cd -= dt
-	if _skill_cd <= 0.0:
+	if _skill_cd <= 0.0 and _punish_t <= 0.0:
 		_skill_cd = _r(float(p.skill[0]), float(p.skill[1]))
 		var keys := ["c", "x", "z"]
 		keys.shuffle()
@@ -325,9 +397,12 @@ func _offense(f: Fighter, o, dt: float) -> void:
 		heavy_chance = 0.52
 	elif vulnerable:
 		heavy_chance = 0.41
+	if _punish_t > 0.0 and not ranged:
+		heavy_chance = 0.04  # Fast light punishes are safer than charging.
 	# Heavy swings are poor choices against a distant or mobile target.
 	if not ranged and dist > float(light.get("reach", 1.8)) - 0.1:
 		heavy_chance *= 0.6
+	var spending_punish: bool = _punish_t > 0.0 and not ranged
 	if randf() < heavy_chance:
 		_queue.append([0.0, Fighter.HOLD_T + _r(0.26, 0.55)])
 	else:
@@ -339,4 +414,6 @@ func _offense(f: Fighter, o, dt: float) -> void:
 		var hits := randi_range(1, max_hits)
 		for i in hits:
 			_queue.append([0.0 if i == 0 else 0.13, 0.06])
+	if spending_punish:
+		_punish_t = 0.0
 

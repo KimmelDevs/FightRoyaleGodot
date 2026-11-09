@@ -87,6 +87,8 @@ var atk_id := ""
 var atk_phase := 0
 var atk_power := 1.0
 var swing_serial := 0
+# FRG12C - actual melee contact serial for truthful whiff checks
+var last_melee_contact_serial := -1
 var last_damage := 0.0
 var last_crit := false
 var cooldowns := {"z": 0.0, "x": 0.0, "c": 0.0}

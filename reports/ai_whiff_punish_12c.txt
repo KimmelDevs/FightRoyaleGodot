@@ -1,0 +1,21 @@
+FIGHT ROYALE GODOT — UPDATE 12C — WHIFF PUNISH, BAITING, ANTI-STALLING
+
+Requires Updates 12A and 12B; designed for Duel vs CPU and CPU vs CPU.
+
+CHANGES
+- Match melee resolver now records a confirmed contact serial when an attack
+  collides with another fighter, whether it hits, is blocked/parried or clashes.
+- AI checks the opponent once during melee recovery. If the preceding swing
+  never made contact, harder CPUs may approach and punish the opening.
+- Brief baiting footwork is available on Hard/Master, rather than fake attacks.
+- Anti-stalling encourages re-engagement after prolonged neutral circling.
+- Existing damage, move reach, cooldowns, guard and projectile defense unchanged.
+
+HOW TO TEST IN GODOT
+1. CPU vs CPU: set A=Master and B=Hard. Test two melee fighters.
+2. Observe miss -> forward approach -> quick attack when in range.
+3. Observe that blocked or clashed swings do NOT count as whiffs.
+4. Watch both fighters approach again after a prolonged neutral standoff.
+5. Retest Easy, then duel vs CPU; check Debugger for script errors.
+
+Python validation is NOT a substitute for compiling and playing the Godot game.
