@@ -1,0 +1,17 @@
+FIGHT ROYALE GODOT — UPDATE 11 — CPU VS CPU
+
+Completes the existing two-fighter spectator mode:
+- Independent AI difficulty for CPU A and CPU B (Easy/Normal/Hard/Master).
+- Both fighters receive separate AiBrain instances; no player input in spectator mode.
+- C cycles cinematic, orbit, follow CPU A, follow CPU B camera views.
+- Number keys 1-4 pick a camera view directly.
+- Hold middle mouse and drag to orbit; mouse wheel changes camera distance.
+- Left/right brackets [ ] set playback simulation speed to 0.5x / 1.0x / 1.5x / 2.0x.
+- Esc opens pause; paused matches do not tick fighter brains.
+- CPU health/guard bars, running match clock, camera and speed hints.
+- Knockout, time-limit decision, rematch and fighter reselect remain from Update 10.
+- Duel vs CPU, skills, VRMs, render options and SFX are preserved.
+- No shop, economy, survival, team fights or multiplayer added.
+
+If the VRMs do not appear immediately, open the Godot editor once to import assets.
+Godot runtime gameplay and model rendering must still be tested on your computer.

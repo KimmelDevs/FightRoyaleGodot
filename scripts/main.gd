@@ -15,6 +15,9 @@ var _mode := "duel"
 # FRG10 - complete Duel vs CPU match flow
 var _duel_seconds := 120
 var _difficulty := 1
+# FRG11 - independent CPU versus CPU spectator controls
+var _cpu_level_a := 2
+var _cpu_level_b := 2
 var _char_a := 0
 var _char_b := 1
 var _pick_side := 0
@@ -275,22 +278,40 @@ func show_prepare() -> void:
 		timer.select(maxi(durations.find(_duel_seconds), 0))
 		timer.item_selected.connect(_choose_duel_time)
 		time_row.add_child(timer)
-	_title(v, "AI Difficulty", 23)
-	var row := HBoxContainer.new()
-	v.add_child(row)
-	for i in 3:
-		var b := _btn(row, ["Easy", "Normal", "Hard"][i], _choose_difficulty.bind(i), 145)
-		if i == _difficulty:
-			b.modulate = Color("#ffe08a")
+	if _mode == "cpu_vs_cpu":
+		_text(v, "Each fighter has its own AI difficulty.", 15)
+		for side in 2:
+			_title(v, "CPU A Difficulty" if side == 0 else "CPU B Difficulty", 21)
+			var row := HBoxContainer.new()
+			v.add_child(row)
+			for i in 4:
+				var b := _btn(row, ["Easy", "Normal", "Hard", "Master"][i], _choose_cpu_difficulty.bind(side, i), 137)
+				if i == (_cpu_level_a if side == 0 else _cpu_level_b):
+					b.modulate = Color("#ffe08a")
+	else:
+		_title(v, "Opponent AI Difficulty", 23)
+		var row := HBoxContainer.new()
+		v.add_child(row)
+		for i in 3:
+			var b := _btn(row, ["Easy", "Normal", "Hard"][i], _choose_difficulty.bind(i), 145)
+			if i == _difficulty:
+				b.modulate = Color("#ffe08a")
 	var nav := HBoxContainer.new()
 	v.add_child(nav)
 	_btn(nav, "Back to Fighters", show_select, 210)
 	_btn(nav, "START FIGHT", _start_match, 230)
 	if _mode == "cpu_vs_cpu":
-		_text(v, "Spectator mode: both fighters are CPU-controlled. Esc pauses; R rematches.", 15)
+		_text(v, "Spectator: C camera | 1-4 camera views | MMB orbit | wheel zoom | [ ] speed | Esc pause | R rematch", 15)
 
 func _choose_duel_time(index: int) -> void:
 	_duel_seconds = [60, 120, 180, 0][clampi(index, 0, 3)]
+
+func _choose_cpu_difficulty(side: int, index: int) -> void:
+	if side == 0:
+		_cpu_level_a = clampi(index, 0, 3)
+	else:
+		_cpu_level_b = clampi(index, 0, 3)
+	show_prepare()
 
 func _choose_difficulty(index: int) -> void:
 	_difficulty = index
@@ -314,7 +335,7 @@ func _start_match() -> void:
 		{"peer": "cpu_b", "name": "CPU B" if spectator else "CPU", "char": _char_b, "loadout": _loadout_b, "team": 1},
 	]
 	_match = Match.new()
-	_match.cfg = {"mode": "duel", "players": players, "local_peer": "spectator" if spectator else "local", "difficulty": _difficulty, "spectator": spectator, "round_seconds": _duel_seconds}
+	_match.cfg = {"mode": "duel", "players": players, "local_peer": "spectator" if spectator else "local", "difficulty": _difficulty, "cpu_levels": [_cpu_level_a, _cpu_level_b], "spectator": spectator, "round_seconds": _duel_seconds}
 	add_child(_match)
 	_hud = Hud.new(_match)
 	_hud.rematch.connect(func(): _match.start_round())

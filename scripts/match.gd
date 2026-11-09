@@ -39,6 +39,16 @@ var _next_id := 1
 var _mote_t := {}
 var _sun: DirectionalLight3D
 
+# FRG11 - independent CPU versus CPU spectator controls
+const SPECTATOR_SPEEDS := [0.5, 1.0, 1.5, 2.0]
+const SPECTATOR_VIEWS := ["Cinematic", "Orbit", "Follow CPU A", "Follow CPU B"]
+var _spectator_speed_index := 1
+var _spectator_view := 0
+var _spectator_dragging := false
+var _spectator_yaw := 0.8
+var _spectator_pitch := 0.36
+var _spectator_distance := 9.0
+
 # FRG09B - third-person duel camera
 # The browser game's original side-view stays available with F6.
 # All camera settings are runtime-only and do not touch fighter rigs/skills.
@@ -152,7 +162,14 @@ func _ready_fight(id: int, fs: Array, sub: String) -> void:
 		for f in fs: f.brain = _brain_for(f))
 
 func _brain_for(f: Fighter):
-	if String(f.owner_peer).begins_with("cpu"): return AiBrain.new(self, cfg.get("difficulty", 1))
+	if String(f.owner_peer).begins_with("cpu"):
+		var preset := int(cfg.get("difficulty", 1))
+		if bool(cfg.get("spectator", false)):
+			var levels: Array = cfg.get("cpu_levels", [2, 2])
+			var idx := 0 if String(f.owner_peer) == "cpu_a" else 1
+			if levels.size() > idx:
+				preset = int(levels[idx])
+		return AiBrain.new(self, clampi(preset, 0, 3))
 	if f.owner_peer == cfg.local_peer: return _player_brain
 	return null
 
@@ -192,6 +209,9 @@ func banner(text: String, color: Color, sub := "") -> void:
 # --- frame ---------------------------------------------------------------------------------
 
 func _unhandled_input(e: InputEvent) -> void:
+	if bool(cfg.get("spectator", false)):
+		_spectator_input(e)
+		return
 	if paused or round_over or not _duel_clock_running:
 		return
 	if not bool(cfg.get("spectator", false)):
@@ -231,11 +251,52 @@ func _unhandled_input(e: InputEvent) -> void:
 			return
 		_player_brain.on_event(e)
 
+# --- FRG11: spectator controls ------------------------------------------------------------
+
+func _spectator_input(e: InputEvent) -> void:
+	# Esc and R remain handled by Hud. No input is sent to PlayerBrain.
+	if e is InputEventKey and e.pressed and not e.echo:
+		var k: int = e.keycode if e.keycode != 0 else e.physical_keycode
+		if k == KEY_C:
+			_spectator_view = (_spectator_view + 1) % SPECTATOR_VIEWS.size()
+		elif k >= KEY_1 and k <= KEY_4:
+			_spectator_view = k - KEY_1
+		elif k == KEY_BRACKETLEFT:
+			_spectator_speed_index = maxi(0, _spectator_speed_index - 1)
+		elif k == KEY_BRACKETRIGHT:
+			_spectator_speed_index = mini(SPECTATOR_SPEEDS.size() - 1, _spectator_speed_index + 1)
+		else:
+			return
+		get_viewport().set_input_as_handled()
+		return
+	if e is InputEventMouseButton:
+		if e.button_index == MOUSE_BUTTON_MIDDLE:
+			_spectator_dragging = e.pressed
+			if e.pressed:
+				_spectator_view = 1
+			get_viewport().set_input_as_handled()
+			return
+		if e.pressed and e.button_index == MOUSE_BUTTON_WHEEL_UP:
+			_spectator_distance = clampf(_spectator_distance - 0.6, 4.0, 18.0)
+			_spectator_view = 1
+			get_viewport().set_input_as_handled()
+			return
+		if e.pressed and e.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			_spectator_distance = clampf(_spectator_distance + 0.6, 4.0, 18.0)
+			_spectator_view = 1
+			get_viewport().set_input_as_handled()
+			return
+	if e is InputEventMouseMotion and _spectator_dragging:
+		_spectator_yaw -= e.relative.x * 0.007
+		_spectator_pitch = clampf(_spectator_pitch + e.relative.y * 0.005, 0.13, 1.12)
+		get_viewport().set_input_as_handled()
+
 func _process(real_dt: float) -> void:
 	real_dt = clampf(real_dt, 0.0, 0.05)
 	var now := Time.get_ticks_msec() / 1000.0
 	var scale := 0.05 if now < _stop_until else 1.0
-	var dt := 0.0 if paused else real_dt * scale
+	var speed := float(SPECTATOR_SPEEDS[_spectator_speed_index]) if bool(cfg.get("spectator", false)) else 1.0
+	var dt := 0.0 if paused else real_dt * scale * speed
 	_time += dt
 	_tick_duel_clock(dt)
 	var due := _timers.filter(func(t): return t[0] <= _time)
@@ -243,7 +304,9 @@ func _process(real_dt: float) -> void:
 	for t in due: t[1].call()
 	if cfg.mode == "team": _retarget()
 	for f in fighters:
-		f.tick(dt)
+		# Zero-delta brain calls can still schedule attacks; pause must freeze AI.
+		if dt > 0.0:
+			f.tick(dt)
 		# A sword remains dangerous for the entire active window. One contact per
 		# defender/swing is enforced in _melee, so framerate cannot multiply damage.
 		if dt > 0.0 and not round_over and f.active_melee():
@@ -627,6 +690,9 @@ func _finish_duel(winner: Fighter, by_time: bool = false) -> void:
 # --- camera --------------------------------------------------------------------------------
 
 func _update_camera(dt: float) -> void:
+	if bool(cfg.get("spectator", false)) and _spectator_view != 0:
+		_update_spectator_camera(dt)
+		return
 	if _third_person and not bool(cfg.get("spectator", false)) and local != null:
 		_update_third_person_camera(dt)
 		return
@@ -656,6 +722,31 @@ func _update_camera(dt: float) -> void:
 	var sh := _trauma * _trauma
 	_shake_t += dt * 32.0
 	camera.position += Vector3(0.22 * sh * sin(_shake_t * 1.7), 0.16 * sh * sin(_shake_t * 2.3), 0)
+
+func _update_spectator_camera(dt: float) -> void:
+	if fighters.size() < 2:
+		return
+	var a: Fighter = fighters[0]
+	var b: Fighter = fighters[1]
+	var mid: Vector3 = (a.chest() + b.chest()) * 0.5
+	var target: Vector3 = mid
+	if _spectator_view == 2:
+		target = a.chest().lerp(b.chest(), 0.15)
+	elif _spectator_view == 3:
+		target = b.chest().lerp(a.chest(), 0.15)
+	var dist := _spectator_distance
+	if _spectator_view == 2 or _spectator_view == 3:
+		dist = maxf(5.0, _spectator_distance * 0.72)
+	else:
+		dist = maxf(dist, a.position.distance_to(b.position) * 0.85 + 3.0)
+	var dir := Vector3(sin(_spectator_yaw) * cos(_spectator_pitch),
+		sin(_spectator_pitch), cos(_spectator_yaw) * cos(_spectator_pitch))
+	var desired := target + dir * dist
+	var alpha := 1.0 - exp(-6.0 * dt)
+	camera.fov = lerpf(camera.fov, 56.0, alpha)
+	camera.global_position = camera.global_position.lerp(desired, alpha)
+	camera.look_at(target, Vector3.UP)
+	_trauma = maxf(_trauma - 1.4 * dt, 0.0)
 
 func _make_camera_hint() -> void:
 	# Lightweight, non-interactive label. HUD and pause UI remain on top.
@@ -752,5 +843,8 @@ func hud() -> Dictionary:
 		"time_limit": float(cfg.get("round_seconds", 120)),
 		"clock_running": _duel_clock_running,
 		"spectator": bool(cfg.get("spectator", false)),
+		"spectator_speed": float(SPECTATOR_SPEEDS[_spectator_speed_index]),
+		"spectator_view": SPECTATOR_VIEWS[_spectator_view],
+		"paused": paused,
 		"can_restart": can_restart,
 	}

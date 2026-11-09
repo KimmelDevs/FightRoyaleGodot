@@ -8,6 +8,7 @@ signal quit_to_menu
 signal change_fighters
 
 # FRG10 - complete Duel vs CPU match flow
+# FRG11 - independent CPU versus CPU spectator controls
 
 var match_node: Match
 var _me_bar: Control
@@ -43,7 +44,7 @@ func _ready() -> void:
 	_controls_hint.position = Vector2(-440, -25)
 	_controls_hint.size = Vector2(880, 24)
 	_controls_hint.text = "WASD move  |  LMB attack/hold charge  |  RMB block  |  Z X C skills  |  Space jump  |  Shift sprint  |  Q dodge"
-	_controls_hint.visible = not bool(match_node.cfg.get("spectator", false))
+	_controls_hint.visible = true
 	_side_list = VBoxContainer.new()
 	_side_list.position = Vector2(16, 96)
 	root.add_child(_side_list)
@@ -199,8 +200,11 @@ func _process(dt: float) -> void:
 	if _clock_label != null:
 		var seconds: int = maxi(int(ceil(float(h.get("seconds_left", 0.0)))), 0)
 		var unlimited: bool = float(h.get("time_limit", 0.0)) <= 0.0
-		_clock_label.text = "DUEL  |  --:--" if unlimited else ("DUEL  |  %02d:%02d" % [int(seconds / 60), seconds % 60])
-		_clock_label.visible = not bool(h.get("spectator", false))
+		var mode_text := "CPU VS CPU" if bool(h.get("spectator", false)) else "DUEL"
+		_clock_label.text = "%s  |  --:--" % mode_text if unlimited else ("%s  |  %02d:%02d" % [mode_text, int(seconds / 60), seconds % 60])
+		_clock_label.visible = true
+	if bool(h.get("spectator", false)):
+		_controls_hint.text = "C / 1-4 camera  |  MMB orbit  |  Wheel zoom  |  [ ] speed  |  Esc pause  |  R rematch   •   %s   %.1fx%s" % [str(h.get("spectator_view", "Cinematic")), float(h.get("spectator_speed", 1.0)), "  PAUSED" if bool(h.get("paused", false)) else ""]
 	_fill(_me_bar, h.me)
 	_fill(_other_bar, h.other)
 	_list(h)
