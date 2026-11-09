@@ -1,0 +1,13 @@
+FIGHT ROYALE GODOT — UPDATE 14A: PROJECTILE CLASHES
+
+What changed:
+- Enemy non-piercing, non-explosive projectiles can cancel when their
+  trajectories intersect during the same update frame.
+- Each projectile can clash only once per frame; friendly fire is excluded.
+- Existing projectile-to-fighter and melee-to-projectile logic is preserved.
+- Paused or finished matches no longer process projectile hits.
+- Old projectile nodes are freed on rematch instead of being left in the scene.
+
+No changes to character skills, cooldowns, projectile damage, VRMs, SFX,
+menus, shops or game modes. No engine-side test was performed by the installer
+unless --check-godot is requested and Godot is on PATH.

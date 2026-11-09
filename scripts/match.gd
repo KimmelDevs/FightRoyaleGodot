@@ -123,6 +123,10 @@ func _build_world() -> void:
 # --- lifecycle -----------------------------------------------------------------------------
 
 func start_round() -> void:
+	# FRG14A: free effects from the preceding round before clearing arrays.
+	for p in _projectiles:
+		if is_instance_valid(p.node):
+			p.node.queue_free()
 	for f in fighters: f.queue_free()
 	for t in _trails.values(): t.queue_free()
 	fighters.clear(); _trails.clear(); _melee_hits.clear(); _projectiles.clear(); _strike_marks.clear(); _timers.clear()
@@ -448,7 +452,66 @@ func _swept_projectile_point(target: Vector3, a: Vector3, b: Vector3) -> Vector3
 	var along := clampf((target - a).dot(travel) / length_sq, 0.0, 1.0)
 	return a + travel * along
 
+# FRG14A - swept projectile versus projectile clashes
+# Only ordinary non-piercing enemy projectiles can cancel each other.
+# Explosive and piercing attacks continue through their normal impact rules.
+func _projectile_can_clash(p: Dictionary) -> bool:
+	if bool(p.get("pierce", false)):
+		return false
+	var style: String = String(p.atk.get("style", ""))
+	return not (style in ["explosion", "bomb", "meteor", "grenade", "rocket"])
+
+func _resolve_projectile_duels(dt: float) -> void:
+	# Compare trajectories over this frame so fast bolts crossing between
+	# discrete positions can still collide, even at lower frame rates.
+	if dt <= 0.0 or _projectiles.size() < 2:
+		return
+	var claimed: Dictionary = {}
+	var destroyed: Array = []
+	for i in range(_projectiles.size()):
+		var a: Dictionary = _projectiles[i]
+		if claimed.has(a.id) or not _projectile_can_clash(a):
+			continue
+		if not is_instance_valid(a.node):
+			continue
+		for j in range(i + 1, _projectiles.size()):
+			var b: Dictionary = _projectiles[j]
+			if claimed.has(b.id) or int(a.team) == int(b.team) or not _projectile_can_clash(b):
+				continue
+			if not is_instance_valid(b.node):
+				continue
+			var relative_position: Vector3 = a.node.global_position - b.node.global_position
+			var relative_velocity: Vector3 = a.vel - b.vel
+			var relative_speed_sq: float = relative_velocity.length_squared()
+			var hit_t: float = 0.0
+			if relative_speed_sq > 0.000001:
+				hit_t = clampf(-relative_position.dot(relative_velocity) / relative_speed_sq, 0.0, dt)
+			var a_at: Vector3 = a.node.global_position + a.vel * hit_t
+			var b_at: Vector3 = b.node.global_position + b.vel * hit_t
+			# Projectile meshes use a 0.14*size sphere. Slight tolerance
+			# accounts for narrow arrow meshes and near-miss visual contact.
+			var hit_radius: float = 0.18 * (maxf(float(a.size), 0.3) + maxf(float(b.size), 0.3))
+			if a_at.distance_squared_to(b_at) > hit_radius * hit_radius:
+				continue
+			var impact: Vector3 = (a_at + b_at) * 0.5
+			fx.sparks(impact, Color("#fff1bd"), 24, 6.0)
+			fx.ring(impact, Color("#f6d78c"), 0.9, 0.20, 0.75)
+			fx.number(impact + Vector3(0.0, 0.3, 0.0), "CLASH!", Color("#ffe6a0"), 0.65)
+			claimed[a.id] = true
+			claimed[b.id] = true
+			destroyed.append(a)
+			destroyed.append(b)
+			break
+	for p in destroyed:
+		if is_instance_valid(p.node):
+			p.node.queue_free()
+		_projectiles.erase(p)
+
 func _update_projectiles(dt: float) -> void:
+	# Never let paused / concluded duels advance or apply projectile damage.
+	if dt <= 0.0 or round_over:
+		return
+	_resolve_projectile_duels(dt)
 	for p in _projectiles.duplicate():
 		var node: MeshInstance3D = p.node
 		var old_pos: Vector3 = node.global_position
