@@ -24,10 +24,10 @@ Profile="*res://scripts/profile.gd"
 
 window/size/viewport_width=1280
 window/size/viewport_height=720
-window/stretch/mode="canvas_items"
-window/stretch/aspect="expand"
 window/size/window_width_override=1600
 window/size/window_height_override=900
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
 
 [editor_plugins]
 
@@ -38,8 +38,5 @@ enabled=PackedStringArray("res://addons/Godot-MToon-Shader/plugin.cfg", "res://a
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 textures/vram_compression/import_etc2_astc=true
-scaling_3d/mode=0
 scaling_3d/scale=1.15
-anti_aliasing/quality/screen_space_aa=0
 textures/default_filters/texture_mipmap_bias=-0.18
-

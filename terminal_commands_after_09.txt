@@ -1,0 +1,142 @@
+# Run in the Godot project folder. Each update is committed separately.
+# Stop if an installer or git command fails.
+
+python install_09b_third_person.py
+if ($LASTEXITCODE -ne 0) { throw "Installer failed: install_09b_third_person.py" }
+git add .
+if ($LASTEXITCODE -ne 0) { throw "git add failed" }
+git commit -m "Fight Royale Godot Update 09B"
+# Next step: continue even if commit has no new changes (re-run)
+
+python install_10_duel_vs_cpu.py
+if ($LASTEXITCODE -ne 0) { throw "Installer failed: install_10_duel_vs_cpu.py" }
+git add .
+if ($LASTEXITCODE -ne 0) { throw "git add failed" }
+git commit -m "Fight Royale Godot Update 10"
+# Next step: continue even if commit has no new changes (re-run)
+
+python install_11_cpu_vs_cpu.py
+if ($LASTEXITCODE -ne 0) { throw "Installer failed: install_11_cpu_vs_cpu.py" }
+git add .
+if ($LASTEXITCODE -ne 0) { throw "git add failed" }
+git commit -m "Fight Royale Godot Update 11"
+# Next step: continue even if commit has no new changes (re-run)
+
+python install_12a_advanced_ai.py
+if ($LASTEXITCODE -ne 0) { throw "Installer failed: install_12a_advanced_ai.py" }
+git add .
+if ($LASTEXITCODE -ne 0) { throw "git add failed" }
+git commit -m "Fight Royale Godot Update 12A"
+# Next step: continue even if commit has no new changes (re-run)
+
+python install_12b_projectile_defense.py
+if ($LASTEXITCODE -ne 0) { throw "Installer failed: install_12b_projectile_defense.py" }
+git add .
+if ($LASTEXITCODE -ne 0) { throw "git add failed" }
+git commit -m "Fight Royale Godot Update 12B"
+# Next step: continue even if commit has no new changes (re-run)
+
+python install_12c_whiff_punish.py
+if ($LASTEXITCODE -ne 0) { throw "Installer failed: install_12c_whiff_punish.py" }
+git add .
+if ($LASTEXITCODE -ne 0) { throw "git add failed" }
+git commit -m "Fight Royale Godot Update 12C"
+# Next step: continue even if commit has no new changes (re-run)
+
+python install_12d_master_ai.py
+if ($LASTEXITCODE -ne 0) { throw "Installer failed: install_12d_master_ai.py" }
+git add .
+if ($LASTEXITCODE -ne 0) { throw "git add failed" }
+git commit -m "Fight Royale Godot Update 12D"
+# Next step: continue even if commit has no new changes (re-run)
+
+python install_13a_ai_personalities.py
+if ($LASTEXITCODE -ne 0) { throw "Installer failed: install_13a_ai_personalities.py" }
+git add .
+if ($LASTEXITCODE -ne 0) { throw "git add failed" }
+git commit -m "Fight Royale Godot Update 13A"
+# Next step: continue even if commit has no new changes (re-run)
+
+python install_13b_tactical_identities.py
+if ($LASTEXITCODE -ne 0) { throw "Installer failed: install_13b_tactical_identities.py" }
+git add .
+if ($LASTEXITCODE -ne 0) { throw "git add failed" }
+git commit -m "Fight Royale Godot Update 13B"
+# Next step: continue even if commit has no new changes (re-run)
+
+python install_13c_adaptive_ai.py
+if ($LASTEXITCODE -ne 0) { throw "Installer failed: install_13c_adaptive_ai.py" }
+git add .
+if ($LASTEXITCODE -ne 0) { throw "git add failed" }
+git commit -m "Fight Royale Godot Update 13C"
+# Next step: continue even if commit has no new changes (re-run)
+
+python install_14a_projectile_clashes.py
+if ($LASTEXITCODE -ne 0) { throw "Installer failed: install_14a_projectile_clashes.py" }
+git add .
+if ($LASTEXITCODE -ne 0) { throw "git add failed" }
+git commit -m "Fight Royale Godot Update 14A"
+# Next step: continue even if commit has no new changes (re-run)
+
+python install_14b_projectile_visuals.py
+if ($LASTEXITCODE -ne 0) { throw "Installer failed: install_14b_projectile_visuals.py" }
+git add .
+if ($LASTEXITCODE -ne 0) { throw "git add failed" }
+git commit -m "Fight Royale Godot Update 14B"
+# Next step: continue even if commit has no new changes (re-run)
+
+python install_14c_projectile_impacts.py
+if ($LASTEXITCODE -ne 0) { throw "Installer failed: install_14c_projectile_impacts.py" }
+git add .
+if ($LASTEXITCODE -ne 0) { throw "git add failed" }
+git commit -m "Fight Royale Godot Update 14C"
+# Next step: continue even if commit has no new changes (re-run)
+
+python install_15a_status_foundation.py
+if ($LASTEXITCODE -ne 0) { throw "Installer failed: install_15a_status_foundation.py" }
+git add .
+if ($LASTEXITCODE -ne 0) { throw "git add failed" }
+git commit -m "Fight Royale Godot Update 15A"
+# Next step: continue even if commit has no new changes (re-run)
+
+python install_15b_control_statuses.py
+if ($LASTEXITCODE -ne 0) { throw "Installer failed: install_15b_control_statuses.py" }
+git add .
+if ($LASTEXITCODE -ne 0) { throw "git add failed" }
+git commit -m "Fight Royale Godot Update 15B"
+# Next step: continue even if commit has no new changes (re-run)
+
+python install_15c_damage_healing.py
+if ($LASTEXITCODE -ne 0) { throw "Installer failed: install_15c_damage_healing.py" }
+git add .
+if ($LASTEXITCODE -ne 0) { throw "git add failed" }
+git commit -m "Fight Royale Godot Update 15C"
+# Next step: continue even if commit has no new changes (re-run)
+
+python install_15d_status_hud.py
+if ($LASTEXITCODE -ne 0) { throw "Installer failed: install_15d_status_hud.py" }
+git add .
+if ($LASTEXITCODE -ne 0) { throw "git add failed" }
+git commit -m "Fight Royale Godot Update 15D"
+# Next step: continue even if commit has no new changes (re-run)
+
+python install_16a_animation_lab.py
+if ($LASTEXITCODE -ne 0) { throw "Installer failed: install_16a_animation_lab.py" }
+git add .
+if ($LASTEXITCODE -ne 0) { throw "git add failed" }
+git commit -m "Fight Royale Godot Update 16A"
+# Next step: continue even if commit has no new changes (re-run)
+
+python install_16b_advanced_animations.py
+if ($LASTEXITCODE -ne 0) { throw "Installer failed: install_16b_advanced_animations.py" }
+git add .
+if ($LASTEXITCODE -ne 0) { throw "git add failed" }
+git commit -m "Fight Royale Godot Update 16B"
+# Next step: continue even if commit has no new changes (re-run)
+
+python install_16c_animation_lab_tools.py
+if ($LASTEXITCODE -ne 0) { throw "Installer failed: install_16c_animation_lab_tools.py" }
+git add .
+if ($LASTEXITCODE -ne 0) { throw "git add failed" }
+git commit -m "Fight Royale Godot Update 16C"
+# Next step: continue even if commit has no new changes (re-run)
