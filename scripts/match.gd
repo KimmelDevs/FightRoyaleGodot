@@ -103,7 +103,6 @@ func start_round() -> void:
 		var f1 := _spawn(a, 0, Vector3(-2, 0, 0))
 		var f2 := _spawn(b, 1, Vector3(2, 0, 0))
 		f1.opponent = f2; f2.opponent = f1
-		if b.peer == "cpu": f2.auto_approach = not f2.kit in ["mage", "bow"]
 		_ready_fight(id, [f1, f2], "")
 	elif cfg.mode == "team":
 		var counts := [0, 0]
@@ -113,7 +112,6 @@ func start_round() -> void:
 			var team: int = p.get("team", i % 2)
 			var k: int = counts[team]; counts[team] += 1
 			var f := _spawn(p, team, Vector3(-5 if team == 0 else 5, 0, (k - 1.5) * 1.8))
-			if String(p.peer).begins_with("cpu"): f.auto_approach = not f.kit in ["mage", "bow"]
 			spawned.append(f)
 		_ready_fight(id, spawned, "%d vs %d" % [counts[0], counts[1]])
 
@@ -150,6 +148,7 @@ func _spawn(slot: Dictionary, team: int, pos: Vector3) -> Fighter:
 		var tr := Trail.new(f.model.blade_base, f.model.blade_tip, Color(f.look.glow))
 		add_child(tr)
 		_trails[f] = tr
+	if String(slot.peer).begins_with("cpu"): f.auto_approach = not f.kit in ["mage", "bow"]
 	if slot.peer == cfg.local_peer: local = f
 	return f
 
