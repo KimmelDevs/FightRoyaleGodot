@@ -1,0 +1,21 @@
+{
+  "version": "13C.1",
+  "description": "Bounded AI adaptation based only on observed attacks and blocking; no damage/stat modifications.",
+  "sample_min": 4,
+  "max_read_events": 12,
+  "decay_seconds": 9.0,
+  "heavy_ratio_threshold": 0.6,
+  "block_memory_threshold": 0.43,
+  "difficulty": {
+    "Hard": {
+      "parry_bonus": 0.025,
+      "charged_bias": 0.07,
+      "skill_guard_bias": 0.12
+    },
+    "Master": {
+      "parry_bonus": 0.06,
+      "charged_bias": 0.12,
+      "skill_guard_bias": 0.22
+    }
+  }
+}

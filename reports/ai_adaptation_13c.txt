@@ -1,0 +1,14 @@
+FIGHT ROYALE GODOT — UPDATE 13C: ADAPTIVE OPPONENT READING
+
+Requires Update 13B (including 13A and the 12-series AI patches).
+
+Hard and Master CPUs can respond to OBSERVED opponent habits:
+- Tracks actual melee attack starts, once per swing.
+- After sufficient samples, slightly improves defensive timing against repeated heavy swings.
+- Notices frequent nearby blocking and modestly favors guard pressure.
+- Weights equipped, usable guard-damaging melee skills slightly higher when facing a defensive habit.
+- Forgotten/decayed reads prevent permanent counterplay and perfect prediction.
+- Easy and Normal retain their original behavior; no hidden-input reading.
+
+Configuration: data/ai_adaptation_13c.json. No shop, roster, VRM, SFX, scene, character stats or combat damage changes.
+This is a code-level installation test; verify in Godot with multiple matches.

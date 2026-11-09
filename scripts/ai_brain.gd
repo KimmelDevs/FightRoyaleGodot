@@ -16,6 +16,16 @@ const RANGED := ["mage", "bow"]
 const PERSONALITY_FILE := "res://data/ai_personalities.json"
 # FRG13B - tactical identity (guard reset, pressure and skill bias)
 const TACTICS_FILE := "res://data/ai_tactics_13b.json"
+# FRG13C - adaptive opponent reading (observed patterns only)
+# FRG13C - learn only actions the opponent visibly commits to
+const ADAPTATION_FILE := "res://data/ai_adaptation_13c.json"
+var _difficulty_level: int = 0
+var _read_settings: Dictionary = {}
+var _enemy_last_read_swing: int = -1
+var _enemy_light_reads: int = 0
+var _enemy_heavy_reads: int = 0
+var _enemy_block_memory: float = 0.0
+var _enemy_read_decay_timer: float = 9.0
 var _personality: Dictionary = {}
 var _personality_loaded := false
 var _tactics: Dictionary = {}
@@ -59,7 +69,9 @@ var _tactical_tries := 0
 
 func _init(match_ref, level: int) -> void:
 	threats = match_ref
-	p = PRESETS[clampi(level, 0, PRESETS.size() - 1)].duplicate(true)
+	_difficulty_level = clampi(level, 0, PRESETS.size() - 1)
+	p = PRESETS[_difficulty_level].duplicate(true)
+	_load_read_settings()
 
 static func _r(a: float, b: float) -> float: return a + randf() * (b - a)
 
@@ -118,6 +130,7 @@ func think(f: Fighter, dt: float) -> void:
 		_punish_t = 0.0
 		return
 	if o is Fighter: _react(f, o)
+	_observe_opponent(f, o, dt)
 	_dodge(f)
 	# Resolve projectile dodge at the predicted interception time.
 	if _projectile_dodge_wait >= 0.0:
@@ -156,10 +169,11 @@ func _react(f: Fighter, o: Fighter) -> void:
 		if f.state == Fighter.S.HITSTUN or f.state == Fighter.S.STAGGER: return
 		var tth: float = float(o.atk.wind) - o.state_t
 		var r := randf()
-		var bc: float = p.block * (0.75 if o.atk.heavy else 1.0)
-		if r < p.parry: _schedule(maxf(tth - 0.07, 0.0), 0.3)
-		elif r < p.parry + bc: _schedule(_r(p.react[0], p.react[1]) * 0.6, tth + 0.45)
-		elif r < p.parry + bc + 0.15: _try_skill(f, "z", true)
+		var bc: float = float(p.block) * (0.75 if o.atk.heavy else 1.0)
+		var parry_read: float = clampf(float(p.parry) + _heavy_habit_parry_bonus(), 0.0, 0.52)
+		if r < parry_read: _schedule(maxf(tth - 0.07, 0.0), 0.3)
+		elif r < parry_read + bc: _schedule(_r(p.react[0], p.react[1]) * 0.6, tth + 0.45)
+		elif r < parry_read + bc + 0.15: _try_skill(f, "z", true)
 	var charging := o.state == Fighter.S.CHARGE
 	if charging and not _seen_charge:
 		_seen_charge = true
@@ -479,6 +493,11 @@ func _select_tactical_skill(f: Fighter, o: Fighter, dist: float) -> String:
 					score += 0.90 if hp_fraction < 0.45 or guard_fraction < 0.3 else 0.15
 			_:
 				continue
+		# FRG13C - favor high-guard-damage melee skills only against a
+		# repeatedly observed blocking habit, never bypassing eligibility.
+		if _guard_habit() and kind == "melee" and o.state == Fighter.S.BLOCK:
+			var guard_value: float = clampf(float(ability.get("guard", 0.0)) / 65.0, 0.0, 1.0)
+			score += guard_value * clampf(float(_read_level().get("skill_guard_bias", 0.0)), 0.0, 0.3)
 		if score > best_score:
 			best_score = score
 			best_key = key
@@ -548,6 +567,10 @@ func _offense(f: Fighter, o, dt: float) -> void:
 	if not ranged and dist > float(light.get("reach", 1.8)) - 0.1:
 		heavy_chance *= 0.6
 	heavy_chance = clampf(heavy_chance * float(_personality.get("heavy_scale", 1.0)), 0.03, 0.65)
+	# FRG13C - moderately favor heavy pressure against persistent blockers.
+	# Do not slow down immediate whiff punishments.
+	if _punish_t <= 0.0 and not ranged and o.state == Fighter.S.BLOCK and _guard_habit():
+		heavy_chance = clampf(heavy_chance + clampf(float(_read_level().get("charged_bias", 0.0)), 0.0, 0.16), 0.03, 0.68)
 	# FRG13B - heavy strikes are more attractive against guard-starved foes.
 	# Always leave genuine whiff punishes fast (from Update 12C).
 	if _punish_t <= 0.0 and o.state == Fighter.S.BLOCK and o.guard < o.max_guard * 0.40:
@@ -568,3 +591,70 @@ func _offense(f: Fighter, o, dt: float) -> void:
 	if spending_punish:
 		_punish_t = 0.0
 
+func _load_read_settings() -> void:
+	_read_settings = {
+		"sample_min": 4,
+		"max_read_events": 12,
+		"decay_seconds": 9.0,
+		"heavy_ratio_threshold": 0.60,
+		"block_memory_threshold": 0.43,
+		"difficulty": {
+			"Hard": {"parry_bonus": 0.025, "charged_bias": 0.07, "skill_guard_bias": 0.12},
+			"Master": {"parry_bonus": 0.060, "charged_bias": 0.12, "skill_guard_bias": 0.22},
+		},
+	}
+	if not FileAccess.file_exists(ADAPTATION_FILE):
+		return
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(ADAPTATION_FILE))
+	if parsed is Dictionary:
+		_read_settings.merge(parsed, true)
+	else:
+		push_warning("FRG13C: malformed adaptation JSON; using built-in limits")
+
+func _read_level() -> Dictionary:
+	if _difficulty_level < 2:
+		return {}
+	var difficulty_data: Dictionary = _read_settings.get("difficulty", {})
+	return difficulty_data.get("Master" if _difficulty_level >= 3 else "Hard", {})
+
+func _observe_opponent(f: Fighter, o: Fighter, dt: float) -> void:
+	# Each new melee swing is observed once, regardless of frame rate. No
+	# future inputs, cooldown inspection, or hidden states are used.
+	if o.state == Fighter.S.ATTACK and String(o.atk.get("type", "")) == "melee":
+		if o.swing_serial != _enemy_last_read_swing:
+			_enemy_last_read_swing = o.swing_serial
+			if bool(o.atk.get("heavy", false)):
+				_enemy_heavy_reads += 1
+			else:
+				_enemy_light_reads += 1
+			var cap: int = clampi(int(_read_settings.get("max_read_events", 12)), 4, 24)
+			if _enemy_heavy_reads + _enemy_light_reads > cap:
+				# Decay the larger bucket so old habits gradually lose weight.
+				if _enemy_heavy_reads >= _enemy_light_reads:
+					_enemy_heavy_reads -= 1
+				else:
+					_enemy_light_reads -= 1
+	_enemy_read_decay_timer -= dt
+	if _enemy_read_decay_timer <= 0.0:
+		_enemy_read_decay_timer = clampf(float(_read_settings.get("decay_seconds", 9.0)), 3.0, 30.0)
+		_enemy_heavy_reads = maxi(0, _enemy_heavy_reads - 1)
+		_enemy_light_reads = maxi(0, _enemy_light_reads - 1)
+	var dist: float = f.position.distance_to(o.position)
+	var nearby_guard: bool = o.state == Fighter.S.BLOCK and dist <= _preferred_range(f) + 1.0
+	var delta_memory: float = 0.23 if nearby_guard else -0.14
+	_enemy_block_memory = clampf(_enemy_block_memory + delta_memory * dt, 0.0, 1.0)
+
+func _heavy_habit_parry_bonus() -> float:
+	var options: Dictionary = _read_level()
+	if options.is_empty():
+		return 0.0
+	var samples: int = _enemy_heavy_reads + _enemy_light_reads
+	if samples < clampi(int(_read_settings.get("sample_min", 4)), 3, 12):
+		return 0.0
+	var ratio: float = float(_enemy_heavy_reads) / float(maxi(samples, 1))
+	if ratio < clampf(float(_read_settings.get("heavy_ratio_threshold", 0.60)), 0.50, 0.90):
+		return 0.0
+	return clampf(float(options.get("parry_bonus", 0.0)), 0.0, 0.08)
+
+func _guard_habit() -> bool:
+	return not _read_level().is_empty() and _enemy_block_memory >= clampf(float(_read_settings.get("block_memory_threshold", 0.43)), 0.2, 0.85)
