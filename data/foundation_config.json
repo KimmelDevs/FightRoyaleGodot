@@ -1,0 +1,38 @@
+{
+  "asset_directories": {
+    "animations": "res://animations",
+    "models": "res://models",
+    "sfx": "res://sfx"
+  },
+  "character_models_found": [
+    "ash.vrm",
+    "aster.vrm",
+    "bob.vrm",
+    "ember.vrm",
+    "gale.vrm",
+    "garrick.vrm",
+    "kaede.vrm",
+    "kaizen.vrm",
+    "kira.vrm",
+    "marina.vrm",
+    "nesa.vrm",
+    "nythera.vrm",
+    "nyx.vrm",
+    "raven.vrm",
+    "rook.vrm",
+    "roxy.vrm",
+    "vesper.vrm",
+    "veyr.vrm",
+    "zarek.vrm",
+    "zenith.vrm",
+    "zephyr.vrm"
+  ],
+  "foundation_version": "01.0",
+  "mode_menus_implementation": "Stage 02 (not yet installed)",
+  "project_scope": "Offline 1v1 only; duel and two AI fighters; no shop/multiplayer/survival/team mode",
+  "schema": 1,
+  "target_modes": [
+    "duel_vs_cpu",
+    "cpu_vs_cpu"
+  ]
+}
