@@ -1,6 +1,7 @@
 class_name Fighter
 extends Node3D
 # FRG15A - status and passive runtime
+# FRG15B - control status protections
 const STATUS_SCRIPT = preload("res://scripts/combat_status.gd")
 ## A playable fighter (port of the web game's fighter.ts). A brain (player input, CPU, or a
 ## remote player) fills `intent` every frame:
@@ -177,7 +178,17 @@ func _apply_emblem(eid: String, level: int) -> void:
 
 # Status API used by later character installers and ability definitions.
 func add_status(effect_id: String, stacks: int = 1, seconds: float = -1.0) -> bool:
-	return status_runtime.apply_effect(effect_id, stacks, seconds) if status_runtime != null else false
+	if status_runtime == null:
+		return false
+	var applied: bool = status_runtime.apply_effect(effect_id, stacks, seconds)
+	if applied and model != null:
+		if effect_id in ["freeze", "paralyze"]:
+			model.flash(Color("#8acfff"), 0.25)
+		elif effect_id == "root":
+			model.flash(Color("#a6a2ff"), 0.15)
+		elif effect_id == "silence":
+			model.flash(Color("#d89bf0"), 0.15)
+	return applied
 
 func notify_passive_event(event_id: String, other: Node = null) -> void:
 	if status_runtime != null:
@@ -207,6 +218,31 @@ func tick(dt: float) -> void:
 	_clock += dt
 	if status_runtime != null:
 		status_runtime.step(dt)
+		# FRG15B - Apply CC to both player and AI inputs; no editor setup needed.
+		if status_runtime.control_blocks("movement"):
+			in_move = Vector3.ZERO
+			in_dash = Vector3.ZERO
+			in_dodge = Vector3.ZERO
+			in_sprint = false
+			in_jump = false
+			_steer_vel = Vector3.ZERO
+			_dash_t = 0.0
+			_dodge_t = 0.0
+		if status_runtime.control_blocks("attack"):
+			in_attack = false
+			_atk_prev = false
+			_holding = false
+			if state in [S.ATTACK, S.CHARGE]:
+				_interrupt_attack()
+				_set_state(S.IDLE)
+		if status_runtime.control_blocks("skill"):
+			in_skill = ""
+			_queued_skill = ""
+			_queued_skill_t = 0.0
+		if status_runtime.control_blocks("defense"):
+			in_block = false
+			if state == S.BLOCK:
+				_set_state(S.IDLE)
 	if guard_fatigue > 0 and dt > 0.0:
 		_fatigue_decay -= dt
 		if _fatigue_decay <= 0.0:

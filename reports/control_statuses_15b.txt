@@ -1,0 +1,16 @@
+FIGHT ROYALE - UPDATE 15B: CONTROL STATUS MECHANICS
+
+Adds four optional, data-driven effects to the 15A status runtime:
+- freeze: 2.0 seconds; prevents movement/attack/block/skills; 4s refreeze immunity.
+- paralyze: 1.0 second full-action lock; 2.5s repeat immunity.
+- root: 1.6 seconds; prevents movement, sprint, jump and dash; can still attack.
+- silence: 2.2 seconds; prevents skills, but basic attack and block remain.
+
+Status effects appear in the existing HP HUD's status label.
+All crowd-control immunities begin when the respective effect expires.
+Characters do NOT receive these effects by default. Later fighter kits explicitly
+apply them through add_status(effect_id, stacks, duration) or attack metadata.
+No changes to damage, cooldowns, AI, skills, or existing passive assignments.
+No changes to models or sound effects. Existing custom status rules are preserved.
+
+Godot editor validation remains required before considering this runtime verified.

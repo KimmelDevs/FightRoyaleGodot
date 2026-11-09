@@ -12,6 +12,8 @@ var _rules: Dictionary = {}
 var _triggers: Dictionary = {}
 var _effects: Dictionary = {} # name -> {stacks:int, left:float}
 var _event_ready: Dictionary = {} # per-event cooldown deadlines
+# FRG15B - control status protections
+var _control_ready: Dictionary = {} # next legal application time for control statuses
 var _clock := 0.0
 var _dot_bank := 0.0
 
@@ -48,11 +50,17 @@ func apply_effect(effect_id: String, stacks: int = 1, seconds: float = -1.0) -> 
 	var duration: float = seconds if seconds > 0.0 else float(rule.get("duration", 3.0))
 	if duration <= 0.0:
 		return false
+	var control_id: String = String(rule.get("control", ""))
+	if control_id != "" and _clock < float(_control_ready.get(effect_id, -1.0)):
+		return false
 	var previous: Dictionary = _effects.get(effect_id, {})
 	_effects[effect_id] = {
 		"stacks": mini(int(previous.get("stacks", 0)) + stacks, cap),
 		"left": maxf(float(previous.get("left", 0.0)), duration)
 	}
+	if control_id != "":
+		# Cooldown begins after the *applied* effect has elapsed.
+		_control_ready[effect_id] = _clock + duration + maxf(float(rule.get("immunity_after", 0.0)), 0.0)
 	return true
 
 func clear_effect(effect_id: String) -> void:
@@ -61,7 +69,24 @@ func clear_effect(effect_id: String) -> void:
 func clear_all() -> void:
 	_effects.clear()
 	_event_ready.clear()
+	_control_ready.clear()
 	_dot_bank = 0.0
+
+func has_effect(effect_id: String) -> bool:
+	return _effects.has(effect_id) and int(_effects[effect_id].get("stacks", 0)) > 0
+
+func control_blocks(action: String) -> bool:
+	# Called after brain input is set but before actions are processed.
+	for effect_id in _effects:
+		var rule: Dictionary = _rules.get(effect_id, {})
+		var kind: String = String(rule.get("control", ""))
+		if kind == "freeze":
+			return true
+		if kind == "root" and action == "movement":
+			return true
+		if kind == "silence" and action == "skill":
+			return true
+	return false
 
 func stacks_of(effect_id: String) -> int:
 	return int(_effects.get(effect_id, {}).get("stacks", 0))

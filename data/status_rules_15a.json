@@ -79,6 +79,38 @@
       "duration": 6.0,
       "modifiers": {},
       "dot_hp_fraction_per_second": 0.0015
+    },
+    "freeze": {
+      "label": "Frozen",
+      "max_stacks": 1,
+      "duration": 2.0,
+      "control": "freeze",
+      "immunity_after": 4.0,
+      "modifiers": {}
+    },
+    "paralyze": {
+      "label": "Paralyzed",
+      "max_stacks": 1,
+      "duration": 1.0,
+      "control": "freeze",
+      "immunity_after": 2.5,
+      "modifiers": {}
+    },
+    "root": {
+      "label": "Rooted",
+      "max_stacks": 1,
+      "duration": 1.6,
+      "control": "root",
+      "immunity_after": 1.5,
+      "modifiers": {}
+    },
+    "silence": {
+      "label": "Silenced",
+      "max_stacks": 1,
+      "duration": 2.2,
+      "control": "silence",
+      "immunity_after": 1.0,
+      "modifiers": {}
     }
   }
 }
