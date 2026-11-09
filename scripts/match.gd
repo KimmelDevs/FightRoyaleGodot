@@ -581,6 +581,36 @@ func _resolve_projectile_duels(dt: float) -> void:
 			p.node.queue_free()
 		_projectiles.erase(p)
 
+# FRG14C - projectile spin and environment impacts
+# Visual-only: projectile velocity, damage, collisions and cooldowns unchanged.
+func _projectile_visual_update(p: Dictionary, dt: float) -> void:
+	var node: MeshInstance3D = p.node
+	if not is_instance_valid(node):
+		return
+	var style: String = String(p.atk.get("style", ""))
+	# Shuriken spin about flight axis while their world travel stays untouched.
+	if style == "shuriken":
+		node.rotate_object_local(Vector3.FORWARD, dt * 15.0)
+
+func _projectile_world_visual(p: Dictionary, at: Vector3, is_world: bool) -> void:
+	# Cosmetic only. Do not call apply_hit or spawn area damage here.
+	var col: Color = p.color
+	var scale: float = clampf(float(p.size), 0.35, 2.0)
+	if not is_world:
+		# Timeouts should quietly dissipate to avoid fake impact cues.
+		fx.flash(at, col, 0.12 * scale, 0.11, 0.32)
+		return
+	var style: String = String(p.atk.get("style", ""))
+	if style in ["explosion", "bomb", "meteor", "grenade", "rocket"]:
+		# A MISS is cosmetic only, even when the projectile style is explosive.
+		fx.flash(at, col, 0.45 * scale, 0.17, 0.65)
+		fx.ring(at, col, 0.65 * scale, 0.22, 0.55)
+	else:
+		fx.sparks(at, col, 9, 3.0)
+		fx.flash(at, col, 0.22 * scale, 0.12, 0.50)
+		if at.y < 0.12:
+			fx.ring(at, col, 0.40 * scale, 0.20, 0.4)
+
 func _update_projectiles(dt: float) -> void:
 	# Never let paused / concluded duels advance or apply projectile damage.
 	if dt <= 0.0 or round_over:
@@ -592,6 +622,7 @@ func _update_projectiles(dt: float) -> void:
 		node.global_position += p.vel * dt
 		_update_projectile_trail(p)
 		p.life -= dt
+		_projectile_visual_update(p, dt)
 		var done := false
 		# FRG12B - predicted projectile defense and melee interception - melee-vs-projectile clash. No free block: only an actual
 		# active melee swing facing the incoming bolt can destroy it. Explosive
@@ -632,7 +663,14 @@ func _update_projectiles(dt: float) -> void:
 				apply_hit(p.shooter, e, p.atk, p.power, contact, dir, true)
 				if not p.pierce: done = true; break
 		var gp := node.global_position
-		if p.life <= 0 or gp.y < 0.05 or Vector2(gp.x, gp.z).length() > 16: done = true
+		if not done:
+			var world_end: bool = gp.y < 0.05 or Vector2(gp.x, gp.z).length() > 16
+			if world_end or p.life <= 0.0:
+				var visual_pos: Vector3 = gp
+				if visual_pos.y < 0.05:
+					visual_pos.y = 0.05
+				_projectile_world_visual(p, visual_pos, world_end)
+				done = true
 		if done:
 			node.queue_free()
 			_projectiles.erase(p)

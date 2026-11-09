@@ -1,0 +1,7 @@
+FIGHT ROYALE GODOT — UPDATE 14C: PROJECTILE IMPACT READABILITY
+
+- Shurikens spin around their flight axis as they move.
+- Missed projectiles make a small visual effect on ground/arena boundaries.
+- Timed-out projectiles quietly dissipate rather than vanish instantly.
+- Existing hit effects, damage, knockback, clashes, hitboxes and AI are unchanged.
+- Requires Update 14B. Tested as a Python file patch; validate in Godot.
