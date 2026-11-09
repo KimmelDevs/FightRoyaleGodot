@@ -1,0 +1,19 @@
+{
+  "update": "08c.1",
+  "preset": "sharp",
+  "window_pixels": [
+    1600,
+    900
+  ],
+  "resolution_selection": "preset",
+  "logical_ui_base": [
+    1280,
+    720
+  ],
+  "3d_supersample_scale": 1.15,
+  "preview_supersample_scale": 1.2,
+  "texture_lod_bias": -0.18,
+  "fog": "disabled",
+  "renderer": "unchanged; keeps GL Compatibility",
+  "note": "This does not increase native VRM texture detail or modify source assets."
+}

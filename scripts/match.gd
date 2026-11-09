@@ -65,7 +65,8 @@ func _build_world() -> void:
 	env.environment.ambient_light_energy = 0.2
 	env.environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	env.environment.tonemap_exposure = 0.85
-	env.environment.fog_enabled = true
+	# FRG08C - remove distance haze from the duel arena
+	env.environment.fog_enabled = false
 	env.environment.fog_light_color = Color("#a9c8e4")
 	env.environment.fog_light_energy = 0.6
 	env.environment.fog_density = 0.004

@@ -173,9 +173,12 @@ func show_select() -> void:
 func _preview_box() -> SubViewportContainer:
 	var box := SubViewportContainer.new()
 	box.stretch = true
-	box.custom_minimum_size = Vector2(320, 240)
+	# FRG08C - render character previews at full displayed size with crisp 3D scaling
+	box.stretch_shrink = 1
+	box.custom_minimum_size = Vector2(400, 300)
 	var viewport := SubViewport.new()
-	viewport.size = Vector2i(400, 320)
+	viewport.size = Vector2i(800, 600)
+	viewport.scaling_3d_scale = 1.20
 	viewport.own_world_3d = true
 	viewport.transparent_bg = true
 	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
