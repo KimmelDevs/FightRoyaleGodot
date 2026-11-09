@@ -18,6 +18,10 @@ var round_over := false
 var can_restart := false
 var paused := false
 
+# FRG10 - complete Duel vs CPU match flow
+var _duel_seconds_left := 120.0
+var _duel_clock_running := false
+
 var _time := 0.0
 var _round := 0
 var _timers: Array = []         # [time, Callable]
@@ -60,7 +64,7 @@ func _ready() -> void:
 	_player_brain = PlayerBrain.new(camera)
 	if not bool(cfg.get("spectator", false)):
 		_make_camera_hint()
-	start_round()
+	start_round.call_deferred()
 
 func _build_world() -> void:
 	var env := WorldEnvironment.new()
@@ -112,6 +116,8 @@ func start_round() -> void:
 	for f in fighters: f.queue_free()
 	for t in _trails.values(): t.queue_free()
 	fighters.clear(); _trails.clear(); _melee_hits.clear(); _projectiles.clear(); _strike_marks.clear(); _timers.clear()
+	_duel_seconds_left = float(cfg.get("round_seconds", 120))
+	_duel_clock_running = false
 	fx.clear()
 	local = null
 	_camera_initialized = false
@@ -142,6 +148,7 @@ func _ready_fight(id: int, fs: Array, sub: String) -> void:
 	later(1.0, func():
 		if id != _round: return
 		banner("FIGHT!", Color.WHITE)
+		_duel_clock_running = cfg.mode == "duel"
 		for f in fs: f.brain = _brain_for(f))
 
 func _brain_for(f: Fighter):
@@ -185,7 +192,7 @@ func banner(text: String, color: Color, sub := "") -> void:
 # --- frame ---------------------------------------------------------------------------------
 
 func _unhandled_input(e: InputEvent) -> void:
-	if paused:
+	if paused or round_over or not _duel_clock_running:
 		return
 	if not bool(cfg.get("spectator", false)):
 		if e is InputEventKey and e.pressed and not e.echo:
@@ -230,6 +237,7 @@ func _process(real_dt: float) -> void:
 	var scale := 0.05 if now < _stop_until else 1.0
 	var dt := 0.0 if paused else real_dt * scale
 	_time += dt
+	_tick_duel_clock(dt)
 	var due := _timers.filter(func(t): return t[0] <= _time)
 	_timers = _timers.filter(func(t): return t[0] > _time)
 	for t in due: t[1].call()
@@ -540,19 +548,14 @@ func _blade_light(dt: float) -> void:
 
 func _on_ko(f: Fighter) -> void:
 	if cfg.mode == "duel":
-		if round_over: return
-		round_over = true
-		var winner: Fighter = fighters.filter(func(x): return x != f)[0]
-		for x in fighters: x.brain = null
-		add_trauma(0.8); hit_stop(0.9)
-		later(0.4, func():
-			winner.win()
-			var spectator_mode: bool = bool(cfg.get("spectator", false))
-			var won: bool = winner.owner_peer == cfg.local_peer
-			var result_text: String = ("%s WINS!" % winner.look.name) if spectator_mode else ("VICTORY" if won else "DEFEAT")
-			var result_color: Color = Color("#ffe08a") if spectator_mode or won else Color("#ff7b7b")
-			ui_event.emit({"type": "over", "text": result_text, "sub": "Press R or click Rematch", "color": result_color})
-			can_restart = true)
+		if round_over:
+			return
+		var survivor: Fighter = null
+		for candidate in fighters:
+			if candidate != f and not candidate.is_down():
+				survivor = candidate
+				break
+		_finish_duel(survivor)
 	elif cfg.mode == "team":
 		fx.number(f.chest() + Vector3(0, 0.8, 0), "DOWN!", Color("#ff7b7b"), 1.1)
 		if round_over: return
@@ -570,6 +573,56 @@ func _on_ko(f: Fighter) -> void:
 					# Legacy team mode no longer grants currency.
 			ui_event.emit({"type": "over", "text": "VICTORY" if winner_team == mine else "DEFEAT", "sub": "Team %s wins" % ("Blue" if winner_team == 0 else "Red"), "color": Color("#ffe08a") if winner_team == mine else Color("#ff7b7b")})
 			can_restart = true)
+
+# --- FRG10: complete duel clock and end-of-round handling ----------------------------------
+
+func _tick_duel_clock(dt: float) -> void:
+	if cfg.mode != "duel" or round_over or not _duel_clock_running or dt <= 0.0:
+		return
+	if float(cfg.get("round_seconds", 120)) <= 0.0:
+		return  # Unlimited mode
+	_duel_seconds_left = maxf(_duel_seconds_left - dt, 0.0)
+	if _duel_seconds_left > 0.0 or fighters.size() < 2:
+		return
+	# Remaining HP percentage determines the result. Exact ties are draws.
+	var a: Fighter = fighters[0]
+	var b: Fighter = fighters[1]
+	var a_ratio: float = a.hp / maxf(a.max_hp, 1.0)
+	var b_ratio: float = b.hp / maxf(b.max_hp, 1.0)
+	var winner: Fighter = null
+	if a_ratio > b_ratio + 0.0001:
+		winner = a
+	elif b_ratio > a_ratio + 0.0001:
+		winner = b
+	_finish_duel(winner, true)
+
+func _finish_duel(winner: Fighter, by_time: bool = false) -> void:
+	if round_over:
+		return
+	round_over = true
+	_duel_clock_running = false
+	for f in fighters:
+		f.brain = null
+	add_trauma(0.65)
+	hit_stop(0.35)
+	later(0.35, func():
+		if not is_instance_valid(self):
+			return
+		if is_instance_valid(winner):
+			winner.win()
+		var spectator_mode: bool = bool(cfg.get("spectator", false))
+		var draw: bool = winner == null
+		var player_wins: bool = winner != null and winner == local
+		var result_text: String = "DRAW"
+		if not draw:
+			if spectator_mode:
+				result_text = "%s WINS!" % winner.look.name
+			else:
+				result_text = "VICTORY" if player_wins else "DEFEAT"
+		var result_color: Color = Color("#d2e7ff") if draw else (Color("#ffe08a") if spectator_mode or player_wins else Color("#ff7b7b"))
+		var detail: String = "Time limit reached" if by_time else "Knockout"
+		ui_event.emit({"type": "over", "text": result_text, "sub": detail + "  |  R to rematch", "color": result_color})
+		can_restart = true)
 
 # --- camera --------------------------------------------------------------------------------
 
@@ -695,5 +748,9 @@ func hud() -> Dictionary:
 		"skills": (["z", "x", "c"].map(func(k): return {"key": k, "name": me.attacks[k].name, "cd": me.cooldowns[k], "max": float(me.attacks[k].cd) * me.cd_mult})) if me else [],
 		"dash": {"t": me.dash_cd, "max": Fighter.DASH_CD} if me else {},
 		"atk_lock": {"t": me.atk_lock, "max": Fighter.RANGED_REST.get(me.kit, 1.2)} if me and me.attacks.l1.type != "melee" else {},
+		"seconds_left": _duel_seconds_left,
+		"time_limit": float(cfg.get("round_seconds", 120)),
+		"clock_running": _duel_clock_running,
+		"spectator": bool(cfg.get("spectator", false)),
 		"can_restart": can_restart,
 	}

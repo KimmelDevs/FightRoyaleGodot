@@ -12,6 +12,8 @@ var _match: Match
 var _hud: Hud
 var _preview: FighterModel
 var _mode := "duel"
+# FRG10 - complete Duel vs CPU match flow
+var _duel_seconds := 120
 var _difficulty := 1
 var _char_a := 0
 var _char_b := 1
@@ -259,6 +261,20 @@ func show_prepare() -> void:
 	_text(v, "Pick three skills per fighter. The fourth skill is freely available to equip.", 15)
 	_skill_picker(v, 0)
 	_skill_picker(v, 1)
+	if _mode == "duel":
+		var time_row := HBoxContainer.new()
+		time_row.add_theme_constant_override("separation", 12)
+		v.add_child(time_row)
+		_text(time_row, "Round limit:", 18)
+		var timer := OptionButton.new()
+		timer.custom_minimum_size = Vector2(180, 36)
+		var durations := [60, 120, 180, 0]
+		for option_index in durations.size():
+			var caption := "Unlimited" if durations[option_index] == 0 else "%d minutes" % int(durations[option_index] / 60)
+			timer.add_item(caption)
+		timer.select(maxi(durations.find(_duel_seconds), 0))
+		timer.item_selected.connect(_choose_duel_time)
+		time_row.add_child(timer)
 	_title(v, "AI Difficulty", 23)
 	var row := HBoxContainer.new()
 	v.add_child(row)
@@ -272,6 +288,9 @@ func show_prepare() -> void:
 	_btn(nav, "START FIGHT", _start_match, 230)
 	if _mode == "cpu_vs_cpu":
 		_text(v, "Spectator mode: both fighters are CPU-controlled. Esc pauses; R rematches.", 15)
+
+func _choose_duel_time(index: int) -> void:
+	_duel_seconds = [60, 120, 180, 0][clampi(index, 0, 3)]
 
 func _choose_difficulty(index: int) -> void:
 	_difficulty = index
@@ -295,12 +314,17 @@ func _start_match() -> void:
 		{"peer": "cpu_b", "name": "CPU B" if spectator else "CPU", "char": _char_b, "loadout": _loadout_b, "team": 1},
 	]
 	_match = Match.new()
-	_match.cfg = {"mode": "duel", "players": players, "local_peer": "spectator" if spectator else "local", "difficulty": _difficulty, "spectator": spectator}
+	_match.cfg = {"mode": "duel", "players": players, "local_peer": "spectator" if spectator else "local", "difficulty": _difficulty, "spectator": spectator, "round_seconds": _duel_seconds}
 	add_child(_match)
 	_hud = Hud.new(_match)
 	_hud.rematch.connect(func(): _match.start_round())
 	_hud.quit_to_menu.connect(show_menu)
+	_hud.change_fighters.connect(_back_to_character_select)
 	add_child(_hud)
+
+func _back_to_character_select() -> void:
+	_end_match()
+	show_select()
 
 func _end_match() -> void:
 	if is_instance_valid(_hud):

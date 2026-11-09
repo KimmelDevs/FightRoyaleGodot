@@ -1,0 +1,16 @@
+FIGHT ROYALE GODOT | UPDATE 10 - DUEL VS CPU
+
+Improves existing Duel vs CPU selection, match and HUD:
+* Configurable 1-, 2-, 3-minute or unlimited round timer (default 2 min).
+* READY/FIGHT banner now emits after HUD has connected.
+* Clock begins when the fighters become controllable.
+* Knockout or time expiry ends the duel. Time winner is highest remaining HP %.
+* Ties at timeout are reported as draws.
+* Rematch (R), Change Fighters, and Main Menu from results/pause UI.
+* Paused/READY/finished duels do not forward player input to PlayerBrain.
+* Bottom-row duel input guide; 09b third-person F6/Tab camera unaffected.
+* CPU vs CPU remains selectable; this update does not complete spectator features.
+* No shop, currency, multiplayer, or new asset requirements.
+
+Validation: Python file patching and backup / restore can be tested here.
+Godot import, parsing, visuals and gameplay must be checked inside your editor.

@@ -5,6 +5,9 @@ extends CanvasLayer
 
 signal rematch
 signal quit_to_menu
+signal change_fighters
+
+# FRG10 - complete Duel vs CPU match flow
 
 var match_node: Match
 var _me_bar: Control
@@ -18,6 +21,8 @@ var _over: PanelContainer
 var _over_title: Label
 var _over_sub: Label
 var _pause: PanelContainer
+var _clock_label: Label
+var _controls_hint: Label
 
 func _init(m: Match) -> void:
 	match_node = m
@@ -29,6 +34,16 @@ func _ready() -> void:
 	add_child(root)
 	_me_bar = _bar_block(root, false)
 	_other_bar = _bar_block(root, true)
+	_clock_label = _label(root, 25, Color("#ffe9a8"))
+	_clock_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_clock_label.position = Vector2(-100, 45)
+	_clock_label.size = Vector2(200, 36)
+	_controls_hint = _label(root, 15, Color("#f1f4ff"))
+	_controls_hint.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	_controls_hint.position = Vector2(-440, -25)
+	_controls_hint.size = Vector2(880, 24)
+	_controls_hint.text = "WASD move  |  LMB attack/hold charge  |  RMB block  |  Z X C skills  |  Space jump  |  Shift sprint  |  Q dodge"
+	_controls_hint.visible = not bool(match_node.cfg.get("spectator", false))
 	_side_list = VBoxContainer.new()
 	_side_list.position = Vector2(16, 96)
 	root.add_child(_side_list)
@@ -51,6 +66,7 @@ func _ready() -> void:
 	_over_title = _label(ov, 56, Color.WHITE)
 	_over_sub = _label(ov, 20, Color("#e8ecf6"))
 	ov.add_child(_button("Rematch (R)", func(): rematch.emit()))
+	ov.add_child(_button("Change Fighters", func(): change_fighters.emit()))
 	ov.add_child(_button("Main menu", func(): quit_to_menu.emit()))
 	_over.hide()
 	_pause = _panel(root)
@@ -59,6 +75,7 @@ func _ready() -> void:
 	_label(pv, 44, Color.WHITE).text = "PAUSED"
 	pv.add_child(_button("Resume (Esc)", func(): set_paused(false)))
 	pv.add_child(_button("Restart", func(): set_paused(false); rematch.emit()))
+	pv.add_child(_button("Change Fighters", func(): set_paused(false); change_fighters.emit()))
 	pv.add_child(_button("Quit to menu", func(): set_paused(false); quit_to_menu.emit()))
 	_pause.hide()
 	match_node.ui_event.connect(_on_event)
@@ -179,6 +196,11 @@ func _process(dt: float) -> void:
 	var a := clampf(_banner_t / 0.3, 0.0, 1.0)
 	_banner.modulate.a = a; _banner_sub.modulate.a = a
 	var h := match_node.hud()
+	if _clock_label != null:
+		var seconds: int = maxi(int(ceil(float(h.get("seconds_left", 0.0)))), 0)
+		var unlimited: bool = float(h.get("time_limit", 0.0)) <= 0.0
+		_clock_label.text = "DUEL  |  --:--" if unlimited else ("DUEL  |  %02d:%02d" % [int(seconds / 60), seconds % 60])
+		_clock_label.visible = not bool(h.get("spectator", false))
 	_fill(_me_bar, h.me)
 	_fill(_other_bar, h.other)
 	_list(h)
