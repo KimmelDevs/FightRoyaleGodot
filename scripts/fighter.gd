@@ -19,6 +19,13 @@ const GUARD_REGEN := 30.0
 const DASH_CD := 3.0
 const DASH_T := 0.3
 const DASH_SPEED := 14.0
+const DODGE_SPEED := 10.0  # FRG06 - locomotion and procedural footwork
+const DODGE_DURATION := 0.20
+const DODGE_COOLDOWN := 1.4
+const SPRINT_MULT := 1.45
+const GROUND_ACCEL := 19.0
+const GROUND_BRAKE := 25.0
+const AIR_CONTROL := 0.45
 const RAGE_MULT := 1.2
 const RANGED_REST := {"mage": 1.2, "bow": 1.3}
 const STUN_DR_WINDOW := 3.0
@@ -48,6 +55,8 @@ var in_jump := false
 var in_skill := ""
 var in_move := Vector3.ZERO
 var in_dash := Vector3.ZERO
+var in_dodge := Vector3.ZERO
+var in_sprint := false
 
 var max_hp := 2500.0
 var hp := 2500.0
@@ -100,6 +109,10 @@ var _guard_delay := 0.0
 var _knock := 0.0
 var _dash_t := 0.0
 var _dash_dir := Vector3.ZERO
+var _dodge_t := 0.0
+var _dodge_cd := 0.0
+var _dodge_dir := Vector3.ZERO
+var _steer_vel := Vector3.ZERO
 var _leap_vel := Vector3.ZERO
 var _clock := 0.0
 var _stun_src := ""
@@ -144,6 +157,7 @@ func airborne() -> bool: return not on_ground and position.y > 0.7
 
 func tick(dt: float) -> void:
 	in_attack = false; in_block = false; in_jump = false; in_skill = ""; in_move = Vector3.ZERO; in_dash = Vector3.ZERO
+	in_dodge = Vector3.ZERO; in_sprint = false
 	if brain != null and state != S.KO and state != S.WIN:
 		brain.think(self, dt)
 	if not on_ground: in_block = false
@@ -153,11 +167,14 @@ func tick(dt: float) -> void:
 	atk_lock = maxf(atk_lock - dt, 0.0)
 	dash_cd = maxf(dash_cd - dt, 0.0)
 	_dash_t = maxf(_dash_t - dt, 0.0)
+	_dodge_t = maxf(_dodge_t - dt, 0.0)
+	_dodge_cd = maxf(_dodge_cd - dt, 0.0)
 	ward_t = maxf(ward_t - dt, 0.0)
 	rage_t = maxf(rage_t - dt, 0.0)
 	counter_t = maxf(counter_t - dt, 0.0)
 	invuln_t = maxf(invuln_t - dt, 0.0)
 	_read_dash()
+	_read_dodge()
 	_read_attack(dt)
 	_read_jump()
 	_read_skill()
@@ -201,6 +218,23 @@ func _read_dash() -> void:
 	_dash_t = DASH_T
 	dash_cd = DASH_CD
 	invuln_t = maxf(invuln_t, 0.15)
+	dashed.emit(self)
+
+func _read_dodge() -> void:
+	# Short evasive sidestep, independent of the double-tap dash cooldown.
+	if in_dodge.length_squared() < 0.01 or _dodge_cd > 0.0 or _dash_t > 0.0:
+		return
+	if state != S.IDLE and state != S.BLOCK:
+		return
+	_dodge_dir = Vector3(in_dodge.x, 0.0, in_dodge.z).normalized()
+	if _dodge_dir.length_squared() < 0.01:
+		return
+	_steer_vel = Vector3.ZERO
+	_dodge_t = DODGE_DURATION
+	_dodge_cd = DODGE_COOLDOWN
+	invuln_t = maxf(invuln_t, 0.14)
+	if state == S.BLOCK:
+		_set_state(S.IDLE)
 	dashed.emit(self)
 
 func _read_attack(dt: float) -> void:
@@ -311,7 +345,8 @@ func _move(dt: float) -> void:
 	var dir := forward()
 	var dist := 99.0
 	if o and not o.is_down():
-		var to: Vector3 = o.position - pos; to.y = 0
+		var to: Vector3 = o.position - pos
+		to.y = 0.0
 		dist = to.length()
 		dir = to / maxf(dist, 0.001)
 	elif in_move.length_squared() > 0.01:
@@ -319,33 +354,68 @@ func _move(dt: float) -> void:
 	if state != S.KO:
 		var target := atan2(dir.x, dir.z)
 		rotation.y += wrapf(target - rotation.y, -PI, PI) * (1.0 - exp(-12.0 * dt))
+
 	var walking := false
+	var running := false
+	var burst := false
 	if state == S.ATTACK and atk.get("mode", "") == "leap" and atk_phase == 1:
 		pos += _leap_vel * dt
+		_steer_vel = Vector3.ZERO
 	elif _dash_t > 0.0:
 		pos += _dash_dir * DASH_SPEED * dt
+		_steer_vel = Vector3.ZERO
+		burst = true
+		walking = on_ground
+	elif _dodge_t > 0.0:
+		pos += _dodge_dir * DODGE_SPEED * dt
+		_steer_vel = Vector3.ZERO
+		burst = true
+		walking = on_ground
 	else:
 		var v := 0.0
 		if state == S.IDLE and auto_approach and brain != null and o and not o.is_down() and dist > ENGAGE:
-			v = walk_speed; walking = true
+			v = walk_speed
+			walking = on_ground
 		if state == S.ATTACK and not atk.is_empty() and atk_phase <= 1 and dist > MIN_DIST + 0.15:
 			v += float(atk.lunge)
 		_knock = maxf(_knock - 14.0 * dt, 0.0)
 		v -= _knock
-		if dist < MIN_DIST and v > 0.0: v = 0.0
+		if dist < MIN_DIST and v > 0.0:
+			v = 0.0
 		pos += dir * v * dt
+
 		var steer := 1.0 if state == S.IDLE else 0.5 if state == S.BLOCK else 0.4 if state == S.CHARGE else 0.0
+		var requested := Vector3.ZERO
 		if steer > 0.0 and in_move.length_squared() > 0.0001:
-			var step := in_move.normalized() * move_speed * steer * dt
-			if dist < MIN_DIST and step.dot(dir) > 0.0: step -= dir * step.dot(dir)
-			pos += step
-			walking = on_ground
-		if dist < MIN_DIST * 0.9: pos -= dir * (MIN_DIST * 0.9 - dist) * 0.5
+			var sprint_now := in_sprint and state == S.IDLE and on_ground
+			var speed := move_speed * (SPRINT_MULT if sprint_now else 1.0)
+			requested = in_move.normalized() * speed * steer
+			running = sprint_now
+		var response := GROUND_ACCEL if requested.length_squared() > 0.01 else GROUND_BRAKE
+		var air_factor := 1.0 if on_ground else AIR_CONTROL
+		_steer_vel = _steer_vel.move_toward(requested, response * air_factor * dt)
+		var travel := _steer_vel * dt
+		if dist < MIN_DIST and travel.dot(dir) > 0.0:
+			travel -= dir * travel.dot(dir)
+		pos += travel
+		walking = walking or (on_ground and _steer_vel.length_squared() > 0.04)
+		if dist < MIN_DIST * 0.9:
+			pos -= dir * (MIN_DIST * 0.9 - dist) * 0.5
 	var flat := Vector2(pos.x, pos.z).length()
 	if flat > arena_radius:
-		pos.x *= arena_radius / flat; pos.z *= arena_radius / flat
+		pos.x *= arena_radius / flat
+		pos.z *= arena_radius / flat
 	position = pos
-	model.walk = clampf(model.walk + (1.0 if walking else -1.0) * dt * 6.0, 0.0, 1.0)
+
+	# The motion modifier controls gait AFTER the animation library poses.
+	var w := 1.0 if walking else 0.0
+	model.walk = clampf(lerpf(model.walk, w, 1.0 - exp(-9.0 * dt)), 0.0, 1.0)
+	model.run = lerpf(model.run, 1.0 if running else 0.0, 1.0 - exp(-7.0 * dt))
+	var side := Vector3(cos(rotation.y), 0.0, -sin(rotation.y))
+	var side_value := clampf(_steer_vel.dot(side) / maxf(move_speed, 0.01), -1.0, 1.0)
+	model.strafe = lerpf(model.strafe, side_value, 1.0 - exp(-9.0 * dt))
+	model.airborne = not on_ground
+	model.burst = lerpf(model.burst, 1.0 if burst else 0.0, 1.0 - exp(-15.0 * dt))
 
 func _vertical(dt: float) -> void:
 	if on_ground: return

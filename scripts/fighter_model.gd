@@ -20,6 +20,10 @@ var blade_tip: Node3D    ## trail end / projectile origin
 var cast_point: Node3D
 var shield_node: Node3D
 var walk := 0.0
+var run := 0.0  # FRG06 - locomotion and procedural footwork
+var strafe := 0.0
+var airborne := false
+var burst := 0.0
 var charge := 0.0
 var recoil := 0.0
 
@@ -84,9 +88,14 @@ var _hips_target := 0.0
 
 func _process(dt: float) -> void:
 	_t += dt
-	_phase += dt * 11.0 * walk
+	_phase += dt * (10.0 + 6.0 * run) * walk
+	if motion == null: return
 	motion.t = _t
 	motion.walk = walk
+	motion.run = run
+	motion.strafe = strafe
+	motion.airborne = airborne
+	motion.burst = burst
 	motion.phase = _phase
 	motion.hips_offset = lerpf(motion.hips_offset, _hips_target, 1.0 - exp(-12.0 * dt))
 	if _flash_t > 0.0:

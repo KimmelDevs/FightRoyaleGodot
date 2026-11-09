@@ -5,6 +5,7 @@ extends Node
 const ACTIONS := [
 	["up", "Move up / forward"], ["down", "Move down / back"], ["left", "Move left"], ["right", "Move right"],
 	["jump", "Jump"], ["attack", "Attack (tap) / charged attack (hold)"], ["block", "Block / shield"],
+	["sprint", "Sprint (hold)"], ["dodge", "Dodge (tap)"],  # FRG06 - locomotion and procedural footwork
 	["skill1", "Skill 1"], ["skill2", "Skill 2"], ["skill3", "Skill 3"],
 ]
 ## Codes: "k:<physical keycode>" or "m:<mouse button index>" ("" = empty slot).
@@ -12,6 +13,7 @@ const DEFAULTS := {
 	"up": ["k:%d" % KEY_W, "k:%d" % KEY_UP], "down": ["k:%d" % KEY_S, "k:%d" % KEY_DOWN],
 	"left": ["k:%d" % KEY_A, "k:%d" % KEY_LEFT], "right": ["k:%d" % KEY_D, "k:%d" % KEY_RIGHT],
 	"jump": ["k:%d" % KEY_SPACE, ""], "attack": ["m:%d" % MOUSE_BUTTON_LEFT, ""], "block": ["m:%d" % MOUSE_BUTTON_RIGHT, ""],
+	"sprint": ["k:%d" % KEY_SHIFT, ""], "dodge": ["k:%d" % KEY_Q, ""],
 	"skill1": ["k:%d" % KEY_Z, ""], "skill2": ["k:%d" % KEY_X, ""], "skill3": ["k:%d" % KEY_C, ""],
 }
 const RESERVED := [KEY_ESCAPE, KEY_R]

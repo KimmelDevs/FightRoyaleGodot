@@ -1,0 +1,22 @@
+FIGHT ROYALE GODOT - MOVEMENT UPDATE 06
+
+ADDED
+- Shift: sprint (1.45x existing character move speed while grounded and idle).
+- Q: short directional dodge, or retreat when standing still; separate 1.4s cooldown.
+- Double-tap WASD still activates the existing long dash.
+- Horizontal movement now accelerates and brakes rather than snapping instantly.
+- Air steering is reduced to 45% of ground response.
+- Footwork adds knee bend, ankle movement, opposing arm swing, stride variation,
+  hip bob, lateral weight shift, mild torso lean, and airborne leg tuck.
+- Existing combat animation poses, attack lunges, knockback and auto-approach remain.
+- No new animation assets needed; skeleton mapping from Update 04 is used.
+
+CONTROLS
+WASD / arrows: move | Shift: sprint | Q: dodge | double-tap direction: dash
+Space: jump | left click: attack | right click: block | Z/X/C: skills
+If custom controls already exist, the two new actions inherit defaults and can
+be rebound from Settings. Other keybindings are preserved.
+
+NOTE
+Python patch testing cannot prove Godot visual correctness. Use --check-godot
+if the Godot executable is available; otherwise open the project in the editor.
