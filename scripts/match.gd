@@ -35,6 +35,19 @@ var _next_id := 1
 var _mote_t := {}
 var _sun: DirectionalLight3D
 
+# FRG09B - third-person duel camera
+# The browser game's original side-view stays available with F6.
+# All camera settings are runtime-only and do not touch fighter rigs/skills.
+var _third_person := true
+var _lock_on := true
+var _camera_dragging := false
+var _camera_initialized := false
+var _orbit_yaw := 0.0
+var _orbit_pitch := deg_to_rad(22.0)
+var _follow_distance := 5.4
+var _camera_hint: Label
+
+
 func _ready() -> void:
 	_build_world()
 	fx = Fx.new()
@@ -45,6 +58,8 @@ func _ready() -> void:
 	camera.make_current()
 	camera.position = Vector3(0, 6, 10)
 	_player_brain = PlayerBrain.new(camera)
+	if not bool(cfg.get("spectator", false)):
+		_make_camera_hint()
 	start_round()
 
 func _build_world() -> void:
@@ -99,6 +114,7 @@ func start_round() -> void:
 	fighters.clear(); _trails.clear(); _melee_hits.clear(); _projectiles.clear(); _strike_marks.clear(); _timers.clear()
 	fx.clear()
 	local = null
+	_camera_initialized = false
 	_round += 1
 	round_over = false
 	can_restart = false
@@ -169,7 +185,43 @@ func banner(text: String, color: Color, sub := "") -> void:
 # --- frame ---------------------------------------------------------------------------------
 
 func _unhandled_input(e: InputEvent) -> void:
+	if paused:
+		return
 	if not bool(cfg.get("spectator", false)):
+		if e is InputEventKey and e.pressed and not e.echo:
+			if e.keycode == KEY_F6 or e.physical_keycode == KEY_F6:
+				_third_person = not _third_person
+				_camera_dragging = false
+				_camera_initialized = false
+				_update_camera_hint()
+				get_viewport().set_input_as_handled()
+				return
+			if e.keycode == KEY_TAB or e.physical_keycode == KEY_TAB:
+				if _third_person:
+					_lock_on = not _lock_on
+					_update_camera_hint()
+					get_viewport().set_input_as_handled()
+					return
+		if e is InputEventMouseButton and _third_person:
+			if e.button_index == MOUSE_BUTTON_MIDDLE:
+				_camera_dragging = e.pressed
+				get_viewport().set_input_as_handled()
+				return
+			if e.pressed and e.button_index == MOUSE_BUTTON_WHEEL_UP:
+				_follow_distance = clampf(_follow_distance - 0.55, 3.2, 9.0)
+				get_viewport().set_input_as_handled()
+				return
+			if e.pressed and e.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+				_follow_distance = clampf(_follow_distance + 0.55, 3.2, 9.0)
+				get_viewport().set_input_as_handled()
+				return
+		if e is InputEventMouseMotion and _third_person and _camera_dragging:
+			_lock_on = false
+			_orbit_yaw -= e.relative.x * 0.006
+			_orbit_pitch = clampf(_orbit_pitch + e.relative.y * 0.005, deg_to_rad(9.0), deg_to_rad(60.0))
+			_update_camera_hint()
+			get_viewport().set_input_as_handled()
+			return
 		_player_brain.on_event(e)
 
 func _process(real_dt: float) -> void:
@@ -522,6 +574,10 @@ func _on_ko(f: Fighter) -> void:
 # --- camera --------------------------------------------------------------------------------
 
 func _update_camera(dt: float) -> void:
+	if _third_person and not bool(cfg.get("spectator", false)) and local != null:
+		_update_third_person_camera(dt)
+		return
+	camera.fov = lerpf(camera.fov, 50.0, 1.0 - exp(-7.0 * dt))
 	var me: Fighter = local if local else (fighters[0] if not fighters.is_empty() else null)
 	if me == null: return
 	var goal: Vector3
@@ -547,6 +603,78 @@ func _update_camera(dt: float) -> void:
 	var sh := _trauma * _trauma
 	_shake_t += dt * 32.0
 	camera.position += Vector3(0.22 * sh * sin(_shake_t * 1.7), 0.16 * sh * sin(_shake_t * 2.3), 0)
+
+func _make_camera_hint() -> void:
+	# Lightweight, non-interactive label. HUD and pause UI remain on top.
+	var layer := CanvasLayer.new()
+	layer.layer = 0
+	add_child(layer)
+	_camera_hint = Label.new()
+	_camera_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_camera_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_camera_hint.add_theme_font_size_override("font_size", 14)
+	_camera_hint.add_theme_color_override("font_color", Color("#fff3dc"))
+	_camera_hint.add_theme_color_override("font_outline_color", Color.BLACK)
+	_camera_hint.add_theme_constant_override("outline_size", 5)
+	layer.add_child(_camera_hint)
+	_camera_hint.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_camera_hint.position = Vector2(-240, 6)
+	_camera_hint.size = Vector2(480, 24)
+	_update_camera_hint()
+
+func _update_camera_hint() -> void:
+	if _camera_hint == null:
+		return
+	if _third_person:
+		_camera_hint.text = "THIRD PERSON  |  F6 side view  |  Tab lock: %s  |  MMB orbit  |  Wheel zoom" % ("ON" if _lock_on else "OFF")
+	else:
+		_camera_hint.text = "SIDE VIEW  |  F6 third person"
+
+func _update_third_person_camera(dt: float) -> void:
+	if local == null or not is_instance_valid(local):
+		return
+	var me: Fighter = local
+	if not _camera_initialized:
+		var facing: Vector3 = me.forward()
+		_orbit_yaw = atan2(facing.x, facing.z)
+		_camera_initialized = true
+	var focus: Vector3 = me.chest()
+	var distance: float = _follow_distance
+	var enemy: Fighter = me.opponent
+	if _lock_on and is_instance_valid(enemy) and not enemy.is_down():
+		var delta: Vector3 = enemy.global_position - me.global_position
+		delta.y = 0.0
+		if delta.length_squared() > 0.02:
+			var desired_yaw: float = atan2(delta.x, delta.z)
+			_orbit_yaw = lerp_angle(_orbit_yaw, desired_yaw, 1.0 - exp(-7.0 * dt))
+		# In lock-on, a little of the opponent is framed beside the player.
+		# Pull backward as they separate so both remain in view.
+		focus = me.chest().lerp(enemy.chest(), 0.27)
+		distance = maxf(distance, delta.length() * 0.54 + 2.7)
+	var back := Vector3(
+		-sin(_orbit_yaw) * cos(_orbit_pitch),
+		sin(_orbit_pitch),
+		-cos(_orbit_yaw) * cos(_orbit_pitch)
+	)
+	var desired: Vector3 = focus + back * distance
+	# Future-proof for levels with walls/obstacles; does not require a hand-made camera rig.
+	var query := PhysicsRayQueryParameters3D.create(focus, desired)
+	query.collide_with_areas = false
+	var hit: Dictionary = get_world_3d().direct_space_state.intersect_ray(query)
+	if not hit.is_empty():
+		desired = focus.lerp(hit.position, 0.86)
+	camera.fov = lerpf(camera.fov, 64.0, 1.0 - exp(-7.0 * dt))
+	camera.global_position = camera.global_position.lerp(desired, 1.0 - exp(-9.0 * dt))
+	camera.look_at(focus, Vector3.UP)
+	# Preserve the pre-existing impact shake instead of losing hit feel.
+	_trauma = maxf(_trauma - 1.4 * dt, 0.0)
+	var shake: float = _trauma * _trauma
+	_shake_t += dt * 32.0
+	camera.global_position += Vector3(
+		0.22 * shake * sin(_shake_t * 1.7),
+		0.16 * shake * sin(_shake_t * 2.3),
+		0.0
+	)
 
 # --- HUD feed ------------------------------------------------------------------------------
 

@@ -1,0 +1,20 @@
+FIGHT ROYALE GODOT | UPDATE 09b - THIRD PERSON CAMERA
+
+Duel vs CPU: third-person camera is ON by default.
+F6: toggle between third-person and original side-view.
+Tab: toggle lock-on in third-person (starts ON).
+Middle mouse hold + drag: free-orbit camera (automatically disables lock-on).
+Mouse wheel: zoom camera in/out.
+WASD: camera-relative movement (already supported by PlayerBrain).
+Left click attack and right click block: unchanged.
+CPU vs CPU: old cinematic camera preserved.
+
+This preview patch changes scripts/match.gd only.
+It does NOT change damage, AI, abilities, movement code, VRM rigs or SFX.
+Godot must import any new VRMs in the editor before they can appear in play.
+Camera is runtime-configurable; F6 allows an immediate A/B comparison.
+
+Test in Duel vs CPU and verify: rotate with MMB, Tab locks back to opponent,
+scroll zoom, F6 toggles, paused game accepts no camera inputs, CPU vs CPU unchanged.
+If a third-person view is blocked by scenery, the camera ray test pulls it inward.
+Actual game visuals and Godot script parsing require testing in your Godot editor.
