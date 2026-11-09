@@ -45,6 +45,8 @@ var _bait_t := 0.0
 var _bait_cd := 2.4
 var _idle_standoff_t := 0.0
 var _engage_t := 0.0
+# FRG12D - master tactical skill choice and interruption-safe inputs
+var _tactical_tries := 0
 
 func _init(match_ref, level: int) -> void:
 	threats = match_ref
@@ -55,6 +57,19 @@ static func _r(a: float, b: float) -> float: return a + randf() * (b - a)
 func think(f: Fighter, dt: float) -> void:
 	var o = f.opponent
 	if o == null or o.is_down(): return
+	# Count real elapsed time while a fighter is attacking, blocking or recovering.
+	_skill_cd = maxf(_skill_cd - dt, 0.0)
+	# An interrupted windup must not resume an old combo, parry or delayed dodge.
+	if f.state in [Fighter.S.HITSTUN, Fighter.S.STAGGER, Fighter.S.KO, Fighter.S.WIN]:
+		_queue.clear()
+		_hold = 0.0
+		_block_wait = -1.0
+		_block_hold = 0.0
+		_jump_wait = -1.0
+		_projectile_dodge_wait = -1.0
+		_bait_t = 0.0
+		_punish_t = 0.0
+		return
 	if o is Fighter: _react(f, o)
 	_dodge(f)
 	# Resolve projectile dodge at the predicted interception time.
@@ -350,8 +365,51 @@ func _usable_skill(f: Fighter, o: Fighter, key: String, dist: float) -> bool:
 			return f.ward_t <= 0.0 and (f.hp < f.max_hp * 0.72 or f.guard < f.max_guard * 0.45)
 	return false
 
+func _select_tactical_skill(f: Fighter, o: Fighter, dist: float) -> String:
+	# Only choose *equipped* skills that can execute from current range.
+	# Lower difficulties retain their original random skill choices.
+	var best_key := ""
+	var best_score := -999.0
+	var enemy_open: bool = o.state in [Fighter.S.HITSTUN, Fighter.S.STAGGER]
+	var enemy_attacking: bool = o.state in [Fighter.S.ATTACK, Fighter.S.CHARGE]
+	for key in ["z", "x", "c"]:
+		if not _usable_skill(f, o, key, dist):
+			continue
+		var ability: Dictionary = f.attacks.get(key, {})
+		var kind: String = String(ability.get("type", ""))
+		var score: float = 0.25 + randf_range(-0.10, 0.10)
+		match kind:
+			"melee":
+				var reach: float = float(ability.get("reach", 2.0))
+				score += 0.55 if dist <= reach else 0.10
+				if enemy_open: score += 0.75
+				if o.state == Fighter.S.BLOCK: score += 0.18
+			"projectile":
+				score += 0.55 if dist > 3.0 else 0.05
+				if enemy_open: score += 0.25
+			"strike":
+				var self_centered: bool = String(ability.get("at", "target")) == "self"
+				score += (0.55 if dist < 2.8 else 0.10) if self_centered else 0.48
+				if enemy_open: score += 0.30
+			"blink":
+				score += 0.75 if dist > 2.6 else 0.08
+				if o.kit in RANGED: score += 0.20
+			"buff":
+				if String(ability.get("mode", "")) == "counter":
+					score += 1.0 if enemy_attacking else -0.5
+				else:
+					var hp_fraction: float = f.hp / maxf(f.max_hp, 1.0)
+					var guard_fraction: float = f.guard / maxf(f.max_guard, 1.0)
+					score += 0.90 if hp_fraction < 0.45 or guard_fraction < 0.3 else 0.15
+			_:
+				continue
+		if score > best_score:
+			best_score = score
+			best_key = key
+	return best_key
+
 func _try_skill(f: Fighter, key: String, force := false) -> bool:
-	if f.cooldowns[key] > 0.0: return false
+	if float(f.cooldowns.get(key, 999.0)) > 0.0: return false
 	if not force and randf() > 0.5: return false
 	f.in_skill = key
 	return true
@@ -371,17 +429,28 @@ func _offense(f: Fighter, o, dt: float) -> void:
 	# Punish a genuine miss with a prompt, usually light, melee response.
 	if _punish_t > 0.0 and not ranged and dist <= reach:
 		_think_cd = minf(_think_cd, 0.035)
-	# Try an off-cooldown skill only if the position and its action type fit.
-	_skill_cd -= dt
+	# Do not spend an entire decision interval when no equipped skill fits.
 	if _skill_cd <= 0.0 and _punish_t <= 0.0:
-		_skill_cd = _r(float(p.skill[0]), float(p.skill[1]))
-		var keys := ["c", "x", "z"]
-		keys.shuffle()
-		if randf() < (0.65 if p.think <= 0.75 else 0.5):
-			for key in keys:
-				if _usable_skill(f, o, key, dist) and _try_skill(f, key, true):
-					_queue.clear()
-					return
+		var picked := ""
+		if float(p.think) <= 1.0:
+			# Hard/Master consider range, counters and punishable openings.
+			picked = _select_tactical_skill(f, o, dist)
+			if randf() > (0.82 if float(p.think) <= 0.75 else 0.63):
+				picked = ""
+		else:
+			var keys := ["c", "x", "z"]
+			keys.shuffle()
+			if randf() < 0.50:
+				for key in keys:
+					if _usable_skill(f, o, key, dist):
+						picked = key
+						break
+		if picked != "" and _try_skill(f, picked, true):
+			_skill_cd = _r(float(p.skill[0]), float(p.skill[1]))
+			_queue.clear()
+			return
+		# Retry occasionally, but not every frame.
+		_skill_cd = 0.24 if float(p.think) <= 1.0 else 0.45
 	# Don't throw away attacks outside their actual reach.
 	if dist > reach:
 		return

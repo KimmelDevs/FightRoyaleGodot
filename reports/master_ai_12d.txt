@@ -1,0 +1,21 @@
+FIGHT ROYALE GODOT — UPDATE 12D — MASTER AI REFINEMENTS
+
+Requires 12A + 12B + 12C. Works in Duel vs CPU and CPU vs CPU.
+
+- Pending attack and defensive inputs are cleared on HITSTUN/STAGGER, preventing
+  stale actions from firing when the CPU recovers.
+- AI skill decision cooldown now advances in real time even when the fighter is
+  attacking or defending, instead of only during an idle frame.
+- Hard/Master evaluate equipped skills using actual cooldown, distance, attack
+  type and the opponent's current state. Easy/Normal keep simpler choices.
+- If no skill is usable, the CPU rechecks shortly instead of wasting its entire
+  skill-decision interval.
+- Cooldown dictionary access is guarded against missing entries.
+- No character stats, cooldown durations, hitboxes or model files are changed.
+
+TEST IN GODOT:
+1. CPU vs CPU: choose Master vs Hard with two melee characters.
+2. Verify guard/parry/hitstun do not trigger stale attack inputs afterwards.
+3. Verify CPUs use attacks and usable skills; compare to Easy vs Normal.
+4. Test a melee fighter vs a ranged fighter and a rematch.
+5. Check Godot Debugger for errors. Python checks cannot verify live gameplay.
