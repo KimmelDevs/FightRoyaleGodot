@@ -1,0 +1,42 @@
+FIGHT ROYALE GODOT - MODEL VISIBILITY CHECK / UPDATE 08
+
+This is a static file audit, NOT proof Godot successfully imported a VRM.
+The old model loader could stop character creation if the resource was unavailable.
+Update 08 replaces invisible / failed characters with visible temporary figures.
+
+Project: C:\Users\Admin\OneDrive\Documents\fight-royale-godot
+Found VRM files: 21
+Roster entries: 17
+
+aster: VRM PRESENT (aster)
+vesper: VRM PRESENT (vesper)
+garrick: VRM PRESENT (garrick)
+kaede: VRM PRESENT (kaede)
+ember: VRM PRESENT (ember)
+marina: NO DEDICATED VRM / fallback expected (unspecified)
+volta: NO DEDICATED VRM / fallback expected (unspecified)
+sylva: NO DEDICATED VRM / fallback expected (unspecified)
+nyx: NO DEDICATED VRM / fallback expected (unspecified)
+rook: VRM PRESENT (rook)
+kira: NO DEDICATED VRM / fallback expected (unspecified)
+leon: NO DEDICATED VRM / fallback expected (unspecified)
+sakura: NO DEDICATED VRM / fallback expected (unspecified)
+raven: VRM PRESENT (raven)
+yuki: NO DEDICATED VRM / fallback expected (unspecified)
+bruno: NO DEDICATED VRM / fallback expected (unspecified)
+ash: NO DEDICATED VRM / fallback expected (unspecified)
+
+WHEN CHARACTERS DO NOT APPEAR:
+1. Open the project in the Godot EDITOR (not just the exported game).
+2. Allow .vrm assets to import; check the Import and Errors tabs.
+3. Confirm addons/vrm/plugin.cfg and addons/Godot-MToon-Shader/plugin.cfg are enabled.
+4. Start Duel vs CPU and choose fighters; placeholder humanoids will appear if VRMs cannot load.
+5. For errors, copy the first red Godot error and send it for a precise fix.
+6. If models are placed in subfolders of models/, their names will be listed here but the existing loader expects models/<id>.vrm.
+
+UPDATE 08 DEFENSE:
+- Parry recovers 10% of max guard and uses hit-stop instead of attacker stun.
+- Blocking/parrying adds +1 fatigue to the attacker (maximum 10).
+- Each fatigue stack slows attack phases by 2% (maximum 20%).
+- Fatigue decreases one stack per 3 seconds without another block/parry.
+- Fatigue counter shown on each fighter's name/HP area.

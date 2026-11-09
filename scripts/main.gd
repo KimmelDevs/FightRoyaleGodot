@@ -178,11 +178,15 @@ func _preview_box() -> SubViewportContainer:
 	viewport.size = Vector2i(400, 320)
 	viewport.own_world_3d = true
 	viewport.transparent_bg = true
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	box.add_child(viewport)
 	var camera := Camera3D.new()
 	camera.position = Vector3(0, 1.0, 3.2)
 	camera.fov = 42
 	viewport.add_child(camera)
+	# FRG08 - character preview camera
+	camera.make_current()
+	camera.look_at(Vector3(0, 1.0, 0), Vector3.UP)
 	var light := DirectionalLight3D.new()
 	light.rotation_degrees = Vector3(-35, 25, 0)
 	viewport.add_child(light)

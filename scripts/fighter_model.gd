@@ -11,6 +11,9 @@ var kit := ""
 var skeleton: Skeleton3D
 var rig_profile: Dictionary = {} # FRG04 - rig mapper integrated
 var loaded_model_id := "" # FRG05 - automatic weapon profile mounts
+# FRG08 - safe VRM loading and visible avatar fallback
+var fallback_used := false
+var fallback_reason := ""
 var player: AnimationPlayer
 var motion: MotionLayer
 var vrm: Node3D
@@ -36,32 +39,53 @@ var _flash_mat: StandardMaterial3D
 
 func setup(look_data: Dictionary) -> void:
 	look = look_data
-	kit = look.kit
-	var id: String = look.get("vrm", "")
-	if id == "" or not ResourceLoader.exists("res://models/%s.vrm" % id):
-		id = FALLBACK.get(look.get("body", "f"), "ember")
-	var vrm_resource: Resource = load("res://models/%s.vrm" % id)
-	if not (vrm_resource is PackedScene):
-		var fallback_id: String = str(FALLBACK.get(look.get("body", "f"), "ember"))
-		if fallback_id != id:
-			id = fallback_id
-			vrm_resource = load("res://models/%s.vrm" % id)
-	if not (vrm_resource is PackedScene):
-		push_error("Fight Royale: cannot import VRM model or its fallback: " + id)
-		return
-	vrm = (vrm_resource as PackedScene).instantiate()
-	add_child(vrm)
-	skeleton = FighterRig.find_skeleton(vrm)
+	kit = str(look.get("kit", "knight"))
+	fallback_used = false
+	fallback_reason = ""
+	# Missing/unimported VRMs must never make the entire fighter invisible.
+	var requested: String = str(look.get("vrm", ""))
+	var candidate_ids: Array[String] = []
+	if not requested.is_empty():
+		candidate_ids.append(requested)
+	var standin: String = str(FALLBACK.get(look.get("body", "f"), "ember"))
+	if not candidate_ids.has(standin):
+		candidate_ids.append(standin)
+	for candidate in candidate_ids:
+		var resource_path := "res://models/%s.vrm" % candidate
+		if not ResourceLoader.exists(resource_path):
+			continue
+		var resource: Resource = ResourceLoader.load(resource_path)
+		if not (resource is PackedScene):
+			continue
+		var instance: Node = (resource as PackedScene).instantiate()
+		if not (instance is Node3D):
+			instance.queue_free()
+			continue
+		vrm = instance as Node3D
+		add_child(vrm)
+		skeleton = FighterRig.find_skeleton(vrm)
+		if skeleton != null and vrm.find_children("*", "MeshInstance3D", true, false).size() > 0:
+			loaded_model_id = candidate
+			break
+		skeleton = null
+		vrm.queue_free()
+		vrm = null
 	if skeleton == null:
-		push_error("Fight Royale: VRM model has no imported Skeleton3D: " + id)
+		fallback_used = true
+		fallback_reason = "No importable VRM with a Skeleton3D for " + str(look.get("name", "fighter"))
+		push_warning("Fight Royale Update 08: " + fallback_reason + ". Using visible placeholder; check Godot's Import / Errors tabs.")
+		_build_fallback_avatar()
 		return
-	rig_profile = FighterRig.profile_for(id)
-	loaded_model_id = id
+	rig_profile = FighterRig.profile_for(loaded_model_id)
 	player = AnimationPlayer.new()
 	player.name = "Poses"
 	vrm.add_child(player)
 	player.root_node = NodePath("..")
-	player.add_animation_library("", load("res://animations/%s.tres" % kit))
+	var animation_resource: Resource = ResourceLoader.load("res://animations/%s.tres" % kit)
+	if animation_resource is AnimationLibrary:
+		player.add_animation_library("", animation_resource as AnimationLibrary)
+	else:
+		push_warning("Fight Royale: animation library for " + kit + " unavailable; model stays visible")
 	motion = MotionLayer.new()
 	motion.heavy = look.get("body", "f") == "m"
 	motion.bone_map = FighterRig.runtime_bone_map(skeleton, rig_profile)
@@ -75,9 +99,60 @@ func setup(look_data: Dictionary) -> void:
 	_build_weapons()
 	play_pose("idle", 10)
 
+func _fallback_piece(parent: Node3D, dimensions: Vector3, center: Vector3, color: Color) -> MeshInstance3D:
+	var mesh := MeshInstance3D.new()
+	var box := BoxMesh.new()
+	box.size = dimensions
+	mesh.mesh = box
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color
+	material.roughness = 0.8
+	mesh.material_override = material
+	mesh.position = center
+	parent.add_child(mesh)
+	_meshes.append(mesh)
+	return mesh
+
+func _build_fallback_avatar() -> void:
+	# Intentionally simple, but always drawn even if .vrm import is broken.
+	vrm = Node3D.new()
+	vrm.name = "VisibleFallback08"
+	add_child(vrm)
+	var armor := Color(str(look.get("tunic", "#5579bb")))
+	var limbs := Color(str(look.get("metal", "#c5d3e7")))
+	var skin := Color("#e8c4a1")
+	_fallback_piece(vrm, Vector3(0.56, 0.78, 0.33), Vector3(0, 1.12, 0), armor)
+	_fallback_piece(vrm, Vector3(0.34, 0.35, 0.33), Vector3(0, 1.73, 0), skin)
+	_fallback_piece(vrm, Vector3(0.22, 0.71, 0.24), Vector3(-0.41, 1.14, 0), limbs)
+	_fallback_piece(vrm, Vector3(0.22, 0.71, 0.24), Vector3(0.41, 1.14, 0), limbs)
+	_fallback_piece(vrm, Vector3(0.23, 0.75, 0.26), Vector3(-0.16, 0.39, 0), armor.darkened(0.25))
+	_fallback_piece(vrm, Vector3(0.23, 0.75, 0.26), Vector3(0.16, 0.39, 0), armor.darkened(0.25))
+	# Keep blade/trail and projectile anchors safe even without humanoid bones.
+	var sword := Node3D.new()
+	sword.position = Vector3(0.52, 1.02, 0)
+	vrm.add_child(sword)
+	_fallback_piece(sword, Vector3(0.07, 0.66, 0.07), Vector3(0, 0.37, 0), Color("#e2ecff"))
+	blade_base = Node3D.new()
+	blade_base.position = Vector3(0, 0.06, 0)
+	sword.add_child(blade_base)
+	blade_tip = Node3D.new()
+	blade_tip.position = Vector3(0, 0.7, 0)
+	sword.add_child(blade_tip)
+	cast_point = blade_tip
+	shield_node = Node3D.new()
+	shield_node.position = Vector3(-0.48, 1.2, 0)
+	vrm.add_child(shield_node)
+	var warning := Label3D.new()
+	warning.text = "VRM IMPORT NEEDED"
+	warning.position = Vector3(0, 2.16, 0)
+	warning.modulate = Color("#ffe08a")
+	warning.pixel_size = 0.004
+	warning.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	vrm.add_child(warning)
+
 ## Blend to a pose; `speed` is the web game's blend rate (higher = snappier).
 func play_pose(pose_name: String, speed: float) -> void:
-	if pose_name == _pose or not player.has_animation(pose_name):
+	if player == null or pose_name == _pose or not player.has_animation(pose_name):
 		return
 	_pose = pose_name
 	player.play(pose_name, clampf(2.2 / maxf(speed, 0.1), 0.03, 0.45))

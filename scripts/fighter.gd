@@ -16,6 +16,9 @@ const ENGAGE := 1.45
 const MIN_DIST := 0.95
 const GRAVITY := 22.0
 const GUARD_REGEN := 30.0
+# FRG08 - defense and guard fatigue
+const FATIGUE_CAP := 10
+const FATIGUE_DECAY_SECONDS := 3.0
 const DASH_CD := 3.0
 const DASH_T := 0.3
 const DASH_SPEED := 14.0
@@ -64,6 +67,8 @@ var max_hp := 2500.0
 var hp := 2500.0
 var max_guard := 100.0
 var guard := 100.0
+var guard_fatigue := 0
+var _fatigue_decay := 3.0
 var move_speed := 3.2
 var walk_speed := 2.6
 var parry_window := 0.16
@@ -138,6 +143,7 @@ func setup(index: int, loadout: Array = ["z", "x", "c"], emblem: Dictionary = {}
 	if not emblem.is_empty():
 		_apply_emblem(emblem.get("id", "fighter"), int(emblem.get("level", 1)))
 	hp = max_hp; guard = max_guard
+	guard_fatigue = 0; _fatigue_decay = FATIGUE_DECAY_SECONDS
 	model = FighterModel.new()
 	add_child(model)
 	model.setup(look)
@@ -166,6 +172,12 @@ func tick(dt: float) -> void:
 	if not on_ground: in_block = false
 	state_t += dt
 	_clock += dt
+	if guard_fatigue > 0 and dt > 0.0:
+		_fatigue_decay -= dt
+		if _fatigue_decay <= 0.0:
+			guard_fatigue -= 1
+			_fatigue_decay = FATIGUE_DECAY_SECONDS
+
 	for k in cooldowns: cooldowns[k] = maxf(cooldowns[k] - dt, 0.0)
 	atk_lock = maxf(atk_lock - dt, 0.0)
 	dash_cd = maxf(dash_cd - dt, 0.0)
@@ -203,15 +215,23 @@ func tick(dt: float) -> void:
 	_compute_pose()
 	model.play_pose(pose_name, pose_speed)
 
+func add_guard_fatigue() -> void:
+	guard_fatigue = mini(guard_fatigue + 1, FATIGUE_CAP)
+	_fatigue_decay = FATIGUE_DECAY_SECONDS
+
+func attack_time_multiplier() -> float:
+	# Each stack makes attack/skill execution 2% slower; maximum 10 stacks.
+	return 1.0 / maxf(1.0 - 0.02 * float(guard_fatigue), 0.5)
+
 ## True throughout the *entire* damaging window, not just on the first active frame.
 func active_melee() -> bool:
 	return state == S.ATTACK and not atk.is_empty() and String(atk.get("type", "")) == "melee" \
-		and atk_phase == 1 and state_t <= float(atk.wind) + float(atk.active) + 0.0001
+		and atk_phase == 1 and state_t <= (float(atk.wind) + float(atk.active)) * attack_time_multiplier() + 0.0001
 
 ## Melee trail should show (wind-up end, active, just after).
 func trail_on() -> bool:
 	if state != S.ATTACK or atk.is_empty() or atk.type != "melee": return false
-	return atk_phase == 1 or (atk_phase == 0 and state_t > atk.wind * 0.6) or (atk_phase == 2 and state_t < atk.wind + atk.active + 0.05)
+	return atk_phase == 1 or (atk_phase == 0 and state_t > float(atk.wind) * attack_time_multiplier() * 0.6) or (atk_phase == 2 and state_t < (float(atk.wind) + float(atk.active)) * attack_time_multiplier() + 0.05)
 
 # --- input -> actions ------------------------------------------------------------------
 
@@ -299,9 +319,9 @@ func _start_attack(aid: String) -> void:
 	_set_state(S.ATTACK)
 
 func _attack_step() -> void:
-	var w: float = atk.wind
-	var ac: float = atk.active
-	var r: float = atk.recover
+	var w: float = float(atk.wind) * attack_time_multiplier()
+	var ac: float = float(atk.active) * attack_time_multiplier()
+	var r: float = float(atk.recover) * attack_time_multiplier()
 	if atk.mode == "leap":
 		# Wind-up crouch -> jump toward the target -> the hit lands on touchdown.
 		if atk_phase == 0 and state_t >= w:
@@ -479,7 +499,7 @@ func receive_hit(attacker, a: Dictionary, power: float) -> String:
 	var dmg: float = float(a.dmg) * power
 	if state == S.BLOCK:
 		if state_t <= parry_window:
-			guard = minf(guard + 20.0, max_guard)
+			guard = minf(guard + max_guard * 0.10, max_guard)
 			model.flash(Color("#99e6ff"), 0.15)
 			return "parry"
 		guard -= float(a.guard) * power

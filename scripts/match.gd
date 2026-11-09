@@ -1,5 +1,6 @@
 class_name Match
 extends Node3D
+# FRG08 - defense integration and visible fighter checks
 ## A running match (port of the web game.ts): duel (1v1) and team (2v2-4v4) in the 3D arena.
 ## Owns the fighters, resolves attacks (melee arcs, clashes, projectiles, area strikes, buffs,
 ## blinks), hit results (parry, block, guard break, counter), hit-stop, shake, KO and rounds.
@@ -41,6 +42,7 @@ func _ready() -> void:
 	camera = Camera3D.new()
 	camera.fov = 50
 	add_child(camera)
+	camera.make_current()
 	camera.position = Vector3(0, 6, 10)
 	_player_brain = PlayerBrain.new(camera)
 	start_round()
@@ -134,6 +136,8 @@ func _spawn(slot: Dictionary, team: int, pos: Vector3) -> Fighter:
 	var f := Fighter.new()
 	add_child(f)
 	f.setup(int(slot.char), slot.get("loadout", ["z", "x", "c"]), slot.get("emblem", {}))
+	if f.model != null and f.model.fallback_used:
+		push_warning("Fight Royale: " + f.look.name + " uses a visible fallback. Open the VRM import errors in Godot.")
 	f.id = _next_id; _next_id += 1
 	f.team = team
 	f.owner_peer = slot.peer
@@ -434,11 +438,13 @@ func apply_hit(attacker, d: Fighter, a: Dictionary, power: float, hit_pos: Vecto
 			add_trauma(0.5 if a.heavy else 0.3 if heavy else 0.18)
 			hit_stop(0.11 if a.heavy else 0.07 if heavy else 0.045)
 		"blocked":
+			if attacker is Fighter: attacker.add_guard_fatigue()
 			fx.sparks(shield_pos, Color("#ffd27a"), 16, 5.0, -dir + Vector3(0, 0.3, 0))
 			fx.number(shield_pos + Vector3(0, 0.4, 0), "BLOCK", Color("#c9d3e6"), 0.7)
 			add_trauma(0.14); hit_stop(0.04)
 		"parry":
-			if not ranged and attacker is Fighter: attacker.stagger(0.95)
+			if attacker is Fighter: attacker.add_guard_fatigue()
+			# Parry delays attacks with hit-stop, not a full stun.
 			fx.sparks(shield_pos, Color("#aee9ff"), 40, 9.0)
 			fx.ring(shield_pos, Color("#b3f2ff"), 1.6, 0.35, 0.9)
 			fx.number(shield_pos + Vector3(0, 0.5, 0), "PARRY!", Color("#8fe6ff"), 1.4)
@@ -547,7 +553,7 @@ func hud() -> Dictionary:
 	# The spectator has no local fighter; show CPU A/CPU B in the two HUD bars.
 	var me: Fighter = local if local else (fighters[0] if not fighters.is_empty() else null)
 	var info := func(f: Fighter) -> Dictionary:
-		return {"id": Data.character(f.char_index).id, "name": f.look.name, "hp": f.hp, "max_hp": f.max_hp, "guard": f.guard, "max_guard": f.max_guard, "down": f.is_down(), "glow": f.look.glow}
+		return {"id": Data.character(f.char_index).id, "name": f.look.name, "hp": f.hp, "max_hp": f.max_hp, "guard": f.guard, "max_guard": f.max_guard, "down": f.is_down(), "glow": f.look.glow, "fatigue": f.guard_fatigue}
 	var other: Fighter = null
 	if cfg.mode == "duel":
 		for f in fighters: if f != me: other = f

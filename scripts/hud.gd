@@ -138,7 +138,10 @@ func _progress(color: Color, h: float) -> ProgressBar:
 func _fill(box: Control, info: Dictionary) -> void:
 	box.visible = not info.is_empty()
 	if info.is_empty(): return
-	(box.get_node("Name") as Label).text = "%s  %d / %d" % [info.name, int(ceil(info.hp)), int(info.max_hp)]
+	# FRG08 - defense HUD fatigue counter
+	var penalty := int(info.get("fatigue", 0))
+	var suffix := "  FATIGUE %d/10" % penalty if penalty > 0 else ""
+	(box.get_node("Name") as Label).text = "%s  %d / %d%s" % [info.name, int(ceil(info.hp)), int(info.max_hp), suffix]
 	var hp: ProgressBar = box.get_node("Hp"); hp.max_value = info.max_hp; hp.value = info.hp
 	var gd: ProgressBar = box.get_node("Guard"); gd.max_value = info.max_guard; gd.value = info.guard
 
