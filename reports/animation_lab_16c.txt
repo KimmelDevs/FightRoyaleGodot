@@ -1,0 +1,16 @@
+Fight Royale Godot — Update 16C: Animation Lab Pose Tools
+
+Requires 16B. Open Main Menu > Animation Lab.
+New controls:
+  - Undo / Redo; Ctrl+Z and Ctrl+Y (up to 48 undo steps).
+  - Copy Pose / Paste Pose between animation states AND fighters.
+  - Mirror L/R (mirrors stored joint offsets; does not retarget whole animations).
+  - Reset Joint without clearing the full state.
+  - Slider drags are grouped into one history entry.
+
+Changes remain in the preview until you press Save Fighter.
+The clipboard is only in memory for the current Animation Lab session.
+Existing saved profiles, VRM meshes, rig hierarchies, animation resources,
+combat logic and AI are not modified.
+Mirroring assumes ordinary left/right VRM humanoid conventions. Certain rigs
+may need manual joint offset adjustments after mirroring.

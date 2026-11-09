@@ -31,6 +31,16 @@ var _dirty := false
 var _turning := false
 var _yaw := 18.0
 var _gait_running := true
+# FRG16C - animation lab pose tools
+# FRG16C: temporary history in the editor; only Save Fighter writes to disk.
+const FRG16C_HISTORY_LIMIT := 48
+var _frg16c_undo_history: Array[Dictionary] = []
+var _frg16c_redo_history: Array[Dictionary] = []
+var _frg16c_clipboard: Dictionary = {}
+var _frg16c_clipboard_valid := false
+var _frg16c_clipboard_source := ""
+var _frg16c_drag_active := false
+var _frg16c_drag_recorded := false
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -113,6 +123,8 @@ func _build_ui() -> void:
 		panel.add_child(slider)
 		_axis.append(slider)
 		slider.value_changed.connect(_on_axis.bind(axis))
+		slider.drag_started.connect(_frg16c_drag_start)
+		slider.drag_ended.connect(_frg16c_drag_end)
 	_style_text(panel, "Walk cycle controls", 18, Color("#ffe6a6"))
 	for field in ["stride", "knee", "arms", "bob"]:
 		var head := HBoxContainer.new()
@@ -128,11 +140,27 @@ func _build_ui() -> void:
 		panel.add_child(slider)
 		_gait[field] = [slider, value]
 		slider.value_changed.connect(_on_gait.bind(field))
+		slider.drag_started.connect(_frg16c_drag_start)
+		slider.drag_ended.connect(_frg16c_drag_end)
 	var actions := HBoxContainer.new()
 	panel.add_child(actions)
 	_button(actions, "Save Fighter", _save)
 	_button(actions, "Reset State", _reset_state)
 	_button(actions, "Reset All", _reset_all)
+	# FRG16C: editing tools work with ALL 16B animation states, not just walk/run.
+	_style_text(panel, "Pose tools (Ctrl+Z / Ctrl+Y)", 15, Color("#ffe6a6"))
+	var history_tools := HBoxContainer.new()
+	panel.add_child(history_tools)
+	_button(history_tools, "Undo", _frg16c_undo)
+	_button(history_tools, "Redo", _frg16c_redo)
+	var clipboard_tools := HBoxContainer.new()
+	panel.add_child(clipboard_tools)
+	_button(clipboard_tools, "Copy Pose", _frg16c_copy_pose)
+	_button(clipboard_tools, "Paste Pose", _frg16c_paste_pose)
+	var mirror_tools := HBoxContainer.new()
+	panel.add_child(mirror_tools)
+	_button(mirror_tools, "Mirror L/R", _frg16c_mirror_pose)
+	_button(mirror_tools, "Reset Joint", _frg16c_reset_joint)
 	_info = _style_text(panel, "Changes are previews until Save Fighter is pressed.", 13, Color("#b8d6c8"))
 	_button(panel, "Back to Main Menu", _back)
 	var right := VBoxContainer.new()
@@ -198,6 +226,7 @@ func _change_character(index: int) -> void:
 	var fighter: Dictionary = Data.character(index)
 	_selected_char = String(fighter.id)
 	_profile = Profiles.load_for(_selected_char)
+	_frg16c_reset_history()
 	if _profile.is_empty():
 		_profile = Profiles.new_profile()
 	_dirty = false
@@ -283,6 +312,7 @@ func _on_axis(value: float, axis: int) -> void:
 	if _selected_bone.is_empty():
 		return
 	var angles := Profiles.get_angles(_profile, _selected_state, _selected_bone)
+	_frg16c_record_change()
 	angles[axis] = value
 	Profiles.put_angles(_profile, _selected_state, _selected_bone, angles)
 	_axis_values[axis].text = "%.1f°" % value
@@ -291,6 +321,7 @@ func _on_axis(value: float, axis: int) -> void:
 func _on_gait(value: float, field: String) -> void:
 	if _selected_char.is_empty():
 		return
+	_frg16c_record_change()
 	var settings: Dictionary = _profile.get("gait", {})
 	settings[field] = value
 	_profile["gait"] = settings
@@ -313,6 +344,7 @@ func _save() -> void:
 	_info.text = message
 
 func _reset_state() -> void:
+	_frg16c_record_change()
 	var poses: Dictionary = _profile.get("poses", {})
 	poses[_selected_state] = {}
 	_profile["poses"] = poses
@@ -320,10 +352,150 @@ func _reset_state() -> void:
 	_mark_dirty()
 
 func _reset_all() -> void:
+	_frg16c_record_change()
 	_profile = Profiles.new_profile()
 	_refresh_sliders()
 	_refresh_gait()
 	_mark_dirty()
+
+# FRG16C: animation editing helpers; no skeleton rest pose or joint hierarchy changes.
+func _frg16c_reset_history() -> void:
+	_frg16c_undo_history.clear()
+	_frg16c_redo_history.clear()
+	_frg16c_drag_active = false
+	_frg16c_drag_recorded = false
+
+func _frg16c_snapshot() -> Dictionary:
+	return {"profile": _profile.duplicate(true), "dirty": _dirty}
+
+func _frg16c_drag_start() -> void:
+	_frg16c_drag_active = true
+	_frg16c_drag_recorded = false
+
+func _frg16c_drag_end(_value_changed: bool) -> void:
+	_frg16c_drag_active = false
+	_frg16c_drag_recorded = false
+
+func _frg16c_record_change() -> void:
+	# A continuous slider drag counts as ONE undo step, not hundreds.
+	if _frg16c_drag_active and _frg16c_drag_recorded:
+		return
+	_frg16c_undo_history.append(_frg16c_snapshot())
+	if _frg16c_undo_history.size() > FRG16C_HISTORY_LIMIT:
+		_frg16c_undo_history.pop_front()
+	_frg16c_redo_history.clear()
+	if _frg16c_drag_active:
+		_frg16c_drag_recorded = true
+
+func _frg16c_restore_snapshot(snapshot: Dictionary, message: String) -> void:
+	var restored: Variant = snapshot.get("profile", {})
+	if not (restored is Dictionary):
+		return
+	_profile = (restored as Dictionary).duplicate(true)
+	_dirty = bool(snapshot.get("dirty", true))
+	_frg16c_drag_active = false
+	_frg16c_drag_recorded = false
+	_refresh_sliders()
+	_refresh_gait()
+	_apply_live()
+	_info.text = message + " · Press Save Fighter to keep these edits."
+
+func _frg16c_undo() -> void:
+	if _frg16c_undo_history.is_empty():
+		_info.text = "Nothing to undo."
+		return
+	var previous: Dictionary = _frg16c_undo_history.pop_back()
+	_frg16c_redo_history.append(_frg16c_snapshot())
+	_frg16c_restore_snapshot(previous, "Undid change")
+
+func _frg16c_redo() -> void:
+	if _frg16c_redo_history.is_empty():
+		_info.text = "Nothing to redo."
+		return
+	var next_pose: Dictionary = _frg16c_redo_history.pop_back()
+	_frg16c_undo_history.append(_frg16c_snapshot())
+	_frg16c_restore_snapshot(next_pose, "Redid change")
+
+func _frg16c_copy_pose() -> void:
+	var poses: Dictionary = _profile.get("poses", {})
+	var current: Variant = poses.get(_selected_state, {})
+	if not (current is Dictionary):
+		_info.text = "Selected pose has invalid data."
+		return
+	_frg16c_clipboard = (current as Dictionary).duplicate(true)
+	_frg16c_clipboard_valid = true
+	_frg16c_clipboard_source = _selected_char + "/" + _selected_state
+	_info.text = "Copied " + _frg16c_clipboard_source + " · Change state or fighter and Paste Pose."
+
+func _frg16c_paste_pose() -> void:
+	if not _frg16c_clipboard_valid:
+		_info.text = "Copy a pose first."
+		return
+	var poses: Dictionary = _profile.get("poses", {})
+	var current: Dictionary = poses.get(_selected_state, {})
+	if current == _frg16c_clipboard:
+		_info.text = "Destination pose already matches the copied pose."
+		return
+	_frg16c_record_change()
+	poses[_selected_state] = _frg16c_clipboard.duplicate(true)
+	_profile["poses"] = poses
+	_refresh_sliders()
+	_mark_dirty()
+	_info.text = "Pasted " + _frg16c_clipboard_source + " into " + _selected_char + "/" + _selected_state + ". Save Fighter to keep it."
+
+func _frg16c_mirror_pose() -> void:
+	var poses: Dictionary = _profile.get("poses", {})
+	var current: Dictionary = poses.get(_selected_state, {})
+	if current.is_empty():
+		_info.text = "This pose has no joint offsets to mirror."
+		return
+	var mirrored: Dictionary = {}
+	for key in current.keys():
+		var bone: String = String(key)
+		var dest: String = bone
+		if bone.begins_with("Left"):
+			dest = "Right" + bone.substr(4)
+		elif bone.begins_with("Right"):
+			dest = "Left" + bone.substr(5)
+		var raw: Variant = current[key]
+		if not (raw is Array) or raw.size() != 3:
+			continue
+		# Mirror in local bone Euler coordinates: pitch stays, yaw/roll invert.
+		mirrored[dest] = [float(raw[0]), -float(raw[1]), -float(raw[2])]
+	if mirrored == current:
+		_info.text = "Pose is already symmetrical."
+		return
+	_frg16c_record_change()
+	poses[_selected_state] = mirrored
+	_profile["poses"] = poses
+	_refresh_sliders()
+	_mark_dirty()
+	_info.text = "Mirrored Left/Right joint offsets for " + _selected_state + ". Save Fighter to keep it."
+
+func _frg16c_reset_joint() -> void:
+	if _selected_bone.is_empty():
+		_info.text = "Select a joint first."
+		return
+	if Profiles.get_angles(_profile, _selected_state, _selected_bone).length_squared() < 0.00001:
+		_info.text = "This joint is already reset."
+		return
+	_frg16c_record_change()
+	Profiles.put_angles(_profile, _selected_state, _selected_bone, Vector3.ZERO)
+	_refresh_sliders()
+	_mark_dirty()
+
+func _unhandled_key_input(event: InputEvent) -> void:
+	if not (event is InputEventKey):
+		return
+	var key_event := event as InputEventKey
+	if not key_event.pressed or key_event.echo or not key_event.ctrl_pressed:
+		return
+	if key_event.keycode == KEY_Z:
+		_frg16c_undo()
+		get_viewport().set_input_as_handled()
+	elif key_event.keycode == KEY_Y:
+		_frg16c_redo()
+		get_viewport().set_input_as_handled()
 
 func _back() -> void:
 	get_tree().change_scene_to_file("res://scenes/main.tscn")
