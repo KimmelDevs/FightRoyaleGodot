@@ -138,6 +138,17 @@ func _bar_block(root: Control, right: bool) -> Control:
 	name.name = "Name"
 	var hp := _progress(Color("#e85d5d"), 18); hp.name = "Hp"; box.add_child(hp)
 	var gd := _progress(Color("#7fc4ff"), 8); gd.name = "Guard"; box.add_child(gd)
+	# FRG15D - status HUD and countdown indicators
+	var status_row := HBoxContainer.new()
+	status_row.name = "StatusRow"
+	status_row.add_theme_constant_override("separation", 7)
+	status_row.alignment = BoxContainer.ALIGNMENT_END if right else BoxContainer.ALIGNMENT_BEGIN
+	for slot in range(3):
+		var effect_label := _label(status_row, 13, Color("#ebefff"))
+		effect_label.name = "Effect%d" % slot
+		effect_label.visible = false
+	status_row.visible = false
+	box.add_child(status_row)
 	if right:
 		hp.fill_mode = ProgressBar.FILL_END_TO_BEGIN
 		gd.fill_mode = ProgressBar.FILL_END_TO_BEGIN
@@ -160,12 +171,30 @@ func _fill(box: Control, info: Dictionary) -> void:
 	# FRG08 - defense HUD fatigue counter
 	var penalty := int(info.get("fatigue", 0))
 	var suffix := "  FATIGUE %d/10" % penalty if penalty > 0 else ""
-	var status_text: String = String(info.get("status", ""))
-	if status_text != "":
-		suffix += "  [%s]" % status_text
 	(box.get_node("Name") as Label).text = "%s  %d / %d%s" % [info.name, int(ceil(info.hp)), int(info.max_hp), suffix]
 	var hp: ProgressBar = box.get_node("Hp"); hp.max_value = info.max_hp; hp.value = info.hp
 	var gd: ProgressBar = box.get_node("Guard"); gd.max_value = info.max_guard; gd.value = info.guard
+	# Active buffs/debuffs are shown as small timed labels, not in the fighter name.
+	var row: HBoxContainer = box.get_node("StatusRow")
+	var effects: Array = info.get("status_effects", [])
+	row.visible = not effects.is_empty()
+	for i in range(3):
+		var cell: Label = row.get_node("Effect%d" % i)
+		cell.visible = i < effects.size()
+		if not cell.visible:
+			continue
+		if i == 2 and effects.size() > 3:
+			cell.text = "+%d more" % (effects.size() - 2)
+			cell.add_theme_color_override("font_color", Color("#c9d3e6"))
+			continue
+		var effect: Dictionary = effects[i]
+		var label: String = String(effect.get("label", effect.get("id", "?")))
+		var stacks: int = int(effect.get("stacks", 1))
+		var left: float = maxf(float(effect.get("left", 0.0)), 0.0)
+		cell.text = "%s%s %.1fs" % [label, ("x%d" % stacks if stacks > 1 else ""), left]
+		var kind: String = String(effect.get("category", "neutral"))
+		var tint := Color("#84e1b4") if kind == "buff" else (Color("#ffaaa3") if kind == "debuff" else Color("#e1d1ff"))
+		cell.add_theme_color_override("font_color", tint)
 
 func set_paused(p: bool) -> void:
 	match_node.paused = p

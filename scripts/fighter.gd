@@ -213,6 +213,12 @@ func notify_passive_event(event_id: String, other: Node = null) -> void:
 func status_summary() -> String:
 	return status_runtime.short_label() if status_runtime != null else ""
 
+# FRG15D - status HUD and countdown indicators
+func status_details() -> Array[Dictionary]:
+	if status_runtime == null:
+		return []
+	return status_runtime.hud_effects()
+
 func receive_status_damage(amount: float) -> void:
 	if state == S.KO or amount <= 0.0:
 		return

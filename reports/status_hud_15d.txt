@@ -1,0 +1,12 @@
+FIGHT ROYALE — UPDATE 15D — STATUS HUD
+
+For Duel vs CPU and CPU vs CPU:
+- Displays up to three active status labels below each fighter's HP/guard bars.
+- Displays remaining seconds, stacks and buff/debuff colors.
+- Additional effects are summarized as +N to prevent HUD overflow.
+- Statuses are listed in stable alphabetical order to prevent jumpy labels.
+- Existing guard-fatigue information remains beside the name.
+- HUD reflects actual status-runtime state. It does not create statuses.
+- Preserves skill cooldowns, models, combat and cameras.
+
+Requires Updates 15A, 15B, 15C. Actual Godot runtime testing required.

@@ -131,6 +131,29 @@ func outgoing_multiplier() -> float:
 func incoming_multiplier() -> float:
 	return clampf(1.0 + modify("incoming_damage"), 0.25, 2.5)
 
+# FRG15D - status HUD and countdown indicators
+func hud_effects() -> Array[Dictionary]:
+	# Provide immutable snapshots for HUD; never expose the mutable effects dictionary.
+	var result: Array[Dictionary] = []
+	for effect_id in _effects.keys():
+		var effect: Dictionary = _effects.get(effect_id, {})
+		var count: int = int(effect.get("stacks", 0))
+		var seconds: float = maxf(float(effect.get("left", 0.0)), 0.0)
+		if count <= 0 or seconds <= 0.0:
+			continue
+		var rule: Dictionary = _rules.get(effect_id, {})
+		result.append({
+			"id": String(effect_id),
+			"label": String(rule.get("label", effect_id)),
+			"stacks": count,
+			"left": seconds,
+			"category": String(rule.get("category", "neutral"))
+		})
+	# Stable visual order during refreshes; never sort the underlying runtime effects.
+	result.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return String(a.get("id", "")) < String(b.get("id", "")))
+	return result
+
 func short_label() -> String:
 	var labels: Array[String] = []
 	for effect_id in _effects:

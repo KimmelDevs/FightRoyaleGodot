@@ -1052,13 +1052,14 @@ func _update_third_person_camera(dt: float) -> void:
 		0.0
 	)
 
+# FRG15D - status HUD and countdown indicators
 # --- HUD feed ------------------------------------------------------------------------------
 
 func hud() -> Dictionary:
 	# The spectator has no local fighter; show CPU A/CPU B in the two HUD bars.
 	var me: Fighter = local if local else (fighters[0] if not fighters.is_empty() else null)
 	var info := func(f: Fighter) -> Dictionary:
-		return {"id": Data.character(f.char_index).id, "name": f.look.name, "hp": f.hp, "max_hp": f.max_hp, "guard": f.guard, "max_guard": f.max_guard, "down": f.is_down(), "glow": f.look.glow, "fatigue": f.guard_fatigue, "status": f.status_summary()}
+		return {"id": Data.character(f.char_index).id, "name": f.look.name, "hp": f.hp, "max_hp": f.max_hp, "guard": f.guard, "max_guard": f.max_guard, "down": f.is_down(), "glow": f.look.glow, "fatigue": f.guard_fatigue, "status": f.status_summary(), "status_effects": f.status_details()}
 	var other: Fighter = null
 	if cfg.mode == "duel":
 		for f in fighters: if f != me: other = f
