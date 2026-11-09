@@ -428,19 +428,93 @@ func _fire(f: Fighter, a: Dictionary) -> void:
 		_spawn_projectile(f, a, f.atk_power, origin, base.rotated(Vector3.UP, off) * float(a.speed), Color(f.look.glow), tgt)
 	fx.flash(origin, Color(f.look.glow), 0.25, 0.1, 0.7)
 
+# FRG14B - readable projectile silhouettes and ribbon trails
+# Visual-only change: projectile hitboxes, speed, damage and clash rules stay unchanged.
+const PROJECTILE_TRAIL_SAMPLES := 8
+
+func _projectile_shape(style: String, size: float) -> Mesh:
+	match style:
+		"arrow":
+			var arrow := BoxMesh.new()
+			arrow.size = Vector3(0.05, 0.05, 0.70) * size
+			return arrow
+		"wave":
+			var wave := BoxMesh.new()
+			wave.size = Vector3(0.95, 0.14, 0.14) * size
+			return wave
+		"shuriken":
+			var star := BoxMesh.new()
+			star.size = Vector3(0.34, 0.34, 0.055) * size
+			return star
+		"shock":
+			var pulse := SphereMesh.new()
+			pulse.radius = 0.20 * size
+			pulse.height = 0.40 * size
+			return pulse
+		_:
+			var bolt := SphereMesh.new()
+			bolt.radius = 0.14 * size
+			bolt.height = 0.28 * size
+			return bolt
+
+func _attach_projectile_trail(p: Dictionary) -> void:
+	var node: MeshInstance3D = p.node
+	var ribbon := MeshInstance3D.new()
+	ribbon.name = "ProjectileTrail"
+	var immediate := ImmediateMesh.new()
+	ribbon.mesh = immediate
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.vertex_color_use_as_albedo = true
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	ribbon.material_override = mat
+	node.add_child(ribbon)
+	p["trail_mesh"] = immediate
+	p["trail_points"] = [node.global_position]
+
+func _update_projectile_trail(p: Dictionary) -> void:
+	var node: MeshInstance3D = p.node
+	if not is_instance_valid(node):
+		return
+	var points: Array = p.get("trail_points", [])
+	points.append(node.global_position)
+	while points.size() > PROJECTILE_TRAIL_SAMPLES:
+		points.pop_front()
+	var ribbon: ImmediateMesh = p.get("trail_mesh")
+	if ribbon == null:
+		return
+	ribbon.clear_surfaces()
+	if points.size() < 2:
+		return
+	ribbon.surface_begin(Mesh.PRIMITIVE_TRIANGLE_STRIP)
+	for i in range(points.size()):
+		var before: Vector3 = points[maxi(i - 1, 0)]
+		var after: Vector3 = points[mini(i + 1, points.size() - 1)]
+		var side: Vector3 = (after - before).cross(Vector3.UP)
+		if side.length_squared() < 0.00001:
+			side = Vector3.RIGHT
+		side = side.normalized() * (0.065 * float(p.size))
+		var alpha: float = 0.72 * float(i) / float(points.size() - 1)
+		var here: Vector3 = points[i]
+		ribbon.surface_set_color(Color(p.color, alpha))
+		ribbon.surface_add_vertex(node.to_local(here - side))
+		ribbon.surface_set_color(Color(p.color, alpha))
+		ribbon.surface_add_vertex(node.to_local(here + side))
+	ribbon.surface_end()
+
 func _spawn_projectile(shooter, a: Dictionary, power: float, pos: Vector3, vel: Vector3, color: Color, target) -> void:
 	var node := MeshInstance3D.new()
 	var size: float = float(a.size)
-	if a.style == "arrow":
-		var b := BoxMesh.new(); b.size = Vector3(0.02, 0.02, 0.7) * size; node.mesh = b
-	else:
-		var s := SphereMesh.new(); s.radius = 0.14 * size; s.height = 0.28 * size; node.mesh = s
+	node.mesh = _projectile_shape(String(a.get("style", "bolt")), size)
 	node.material_override = Fx.unlit(color, 1.0, true)
 	add_child(node)
 	node.global_position = pos
 	if vel.length() > 0.01: node.look_at(pos + vel, Vector3.UP)
 	_projectiles.append({"id": _next_id, "node": node, "vel": vel, "life": 2.2, "shooter": shooter, "team": shooter.team,
 		"atk": a, "power": power, "pierce": bool(a.pierce), "hit": {}, "target": target, "color": color, "size": size})
+	_attach_projectile_trail(_projectiles[_projectiles.size() - 1])
 	_next_id += 1
 
 ## Closest point on projectile travel segment, including both end points.
@@ -516,6 +590,7 @@ func _update_projectiles(dt: float) -> void:
 		var node: MeshInstance3D = p.node
 		var old_pos: Vector3 = node.global_position
 		node.global_position += p.vel * dt
+		_update_projectile_trail(p)
 		p.life -= dt
 		var done := false
 		# FRG12B - predicted projectile defense and melee interception - melee-vs-projectile clash. No free block: only an actual

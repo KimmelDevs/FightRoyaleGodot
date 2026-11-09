@@ -1,0 +1,10 @@
+FIGHT ROYALE GODOT — UPDATE 14B — PROJECTILE VISUALS
+
+Changes to scripts/match.gd:
+- Makes arrows, waves, shurikens and shock projectiles visually distinct.
+- Adds short fading ribbons to projectiles, automatically freed with the projectile.
+- Keeps the 14A projectile-vs-projectile clash rules unchanged.
+- Does not modify damage, hitboxes, speed, cooldowns or game modes.
+
+This is a cosmetic update, not full character-specific projectile artwork.
+Open the project in Godot to import scripts and test the rendered result.
