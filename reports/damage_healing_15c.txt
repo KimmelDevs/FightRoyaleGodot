@@ -1,0 +1,27 @@
+FIGHT ROYALE — UPDATE 15C: DAMAGE / HEALING / CLEANSE
+
+Requires Update 15A and Update 15B.
+
+Adds optional data-driven effects:
+ - poison: 3 stacks maximum; 5-second duration; each stack deals 0.18%
+   of maximum HP per second, at the existing 0.25-second status tick.
+ - regeneration: 3 stacks maximum; 5-second duration; each stack heals
+   0.25% of maximum HP per second, capped at maximum HP.
+
+Existing scorch and bleed continue to work. Periodic damage resolves before
+periodic healing; lethal status damage cannot be undone by regeneration.
+
+New runtime method: status_runtime.cleanse_negative(max_count=-1) -> int.
+New fighter method: cleanse_debuffs(max_count=-1) -> int.
+New fighter method: remove_status(effect_id) -> void.
+
+Classifies the original statuses as buffs or debuffs, preserving any existing
+custom category values. Effect parameters are not overwritten.
+
+No character automatically receives these effects. Their application comes
+later in character kits and passive profiles, which can call
+fighter.add_status(effect_id, stacks, seconds).
+
+No changes to game modes, shop, stats, VRM assets, or combat audio.
+
+Godot editor runtime testing is still required.

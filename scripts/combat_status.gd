@@ -1,5 +1,6 @@
 extends Node
 ## FRG15A - status and passive runtime
+# FRG15C - damage/healing/cleanse status support
 ## Generic status effects and event-triggered passives, with *no* default character passives.
 ## Character installers can add triggers to data/passive_profiles_15a.json.
 
@@ -65,6 +66,22 @@ func apply_effect(effect_id: String, stacks: int = 1, seconds: float = -1.0) -> 
 
 func clear_effect(effect_id: String) -> void:
 	_effects.erase(effect_id)
+
+func cleanse_negative(max_count: int = -1) -> int:
+	# -1 clears every debuff; positive values remove at most that many kinds.
+	# Return the number of distinct effects removed; immunity timers stay intact.
+	var removed := 0
+	if max_count == 0:
+		return 0
+	for effect_id in _effects.keys():
+		var rule: Dictionary = _rules.get(effect_id, {})
+		if String(rule.get("category", "")) != "debuff":
+			continue
+		_effects.erase(effect_id)
+		removed += 1
+		if max_count > 0 and removed >= max_count:
+			break
+	return removed
 
 func clear_all() -> void:
 	_effects.clear()
@@ -143,14 +160,19 @@ func step(dt: float) -> void:
 	while _dot_bank >= 0.25:
 		_dot_bank -= 0.25
 		var damage := 0.0
+		var healing := 0.0
 		for effect_id in _effects:
 			var rule: Dictionary = _rules.get(effect_id, {})
-			damage += float(rule.get("dot_hp_fraction_per_second", 0.0)) * stacks_of(effect_id) * 0.25 * float(_host.max_hp)
+			var stack_count: int = stacks_of(effect_id)
+			damage += maxf(float(rule.get("dot_hp_fraction_per_second", 0.0)), 0.0) * stack_count * 0.25 * float(_host.max_hp)
+			healing += maxf(float(rule.get("hot_hp_fraction_per_second", 0.0)), 0.0) * stack_count * 0.25 * float(_host.max_hp)
 		if damage > 0.0:
 			_host.receive_status_damage(damage)
 			if _host.is_down():
 				clear_all()
 				break
+		if healing > 0.0 and _host.has_method("heal"):
+			_host.heal(healing)
 
 func on_event(event_id: String, other: Node = null) -> void:
 	if _host == null or _host.is_down():

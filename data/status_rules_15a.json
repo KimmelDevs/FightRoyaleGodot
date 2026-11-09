@@ -8,7 +8,8 @@
       "duration": 5.0,
       "modifiers": {
         "attack_speed": 0.05
-      }
+      },
+      "category": "buff"
     },
     "slow": {
       "label": "Slow",
@@ -16,7 +17,8 @@
       "duration": 4.0,
       "modifiers": {
         "movement": -0.08
-      }
+      },
+      "category": "debuff"
     },
     "weaken": {
       "label": "Weaken",
@@ -24,7 +26,8 @@
       "duration": 7.0,
       "modifiers": {
         "outgoing_damage": -0.06
-      }
+      },
+      "category": "debuff"
     },
     "brittle": {
       "label": "Brittle",
@@ -32,7 +35,8 @@
       "duration": 7.0,
       "modifiers": {
         "incoming_damage": 0.05
-      }
+      },
+      "category": "debuff"
     },
     "fortify": {
       "label": "Fortify",
@@ -40,7 +44,8 @@
       "duration": 6.0,
       "modifiers": {
         "incoming_damage": -0.06
-      }
+      },
+      "category": "buff"
     },
     "focus": {
       "label": "Focus",
@@ -48,7 +53,8 @@
       "duration": 5.0,
       "modifiers": {
         "outgoing_damage": 0.05
-      }
+      },
+      "category": "buff"
     },
     "resolve": {
       "label": "Resolve",
@@ -56,7 +62,8 @@
       "duration": 8.0,
       "modifiers": {
         "movement": 0.07
-      }
+      },
+      "category": "buff"
     },
     "guard_flow": {
       "label": "Guard Flow",
@@ -64,21 +71,24 @@
       "duration": 5.0,
       "modifiers": {
         "guard_regen": 0.12
-      }
+      },
+      "category": "buff"
     },
     "scorch": {
       "label": "Scorch",
       "max_stacks": 5,
       "duration": 4.0,
       "modifiers": {},
-      "dot_hp_fraction_per_second": 0.002
+      "dot_hp_fraction_per_second": 0.002,
+      "category": "debuff"
     },
     "bleed": {
       "label": "Bleed",
       "max_stacks": 3,
       "duration": 6.0,
       "modifiers": {},
-      "dot_hp_fraction_per_second": 0.0015
+      "dot_hp_fraction_per_second": 0.0015,
+      "category": "debuff"
     },
     "freeze": {
       "label": "Frozen",
@@ -86,7 +96,8 @@
       "duration": 2.0,
       "control": "freeze",
       "immunity_after": 4.0,
-      "modifiers": {}
+      "modifiers": {},
+      "category": "debuff"
     },
     "paralyze": {
       "label": "Paralyzed",
@@ -94,7 +105,8 @@
       "duration": 1.0,
       "control": "freeze",
       "immunity_after": 2.5,
-      "modifiers": {}
+      "modifiers": {},
+      "category": "debuff"
     },
     "root": {
       "label": "Rooted",
@@ -102,7 +114,8 @@
       "duration": 1.6,
       "control": "root",
       "immunity_after": 1.5,
-      "modifiers": {}
+      "modifiers": {},
+      "category": "debuff"
     },
     "silence": {
       "label": "Silenced",
@@ -110,7 +123,24 @@
       "duration": 2.2,
       "control": "silence",
       "immunity_after": 1.0,
-      "modifiers": {}
+      "modifiers": {},
+      "category": "debuff"
+    },
+    "poison": {
+      "label": "Poison",
+      "max_stacks": 3,
+      "duration": 5.0,
+      "category": "debuff",
+      "modifiers": {},
+      "dot_hp_fraction_per_second": 0.0018
+    },
+    "regeneration": {
+      "label": "Regeneration",
+      "max_stacks": 3,
+      "duration": 5.0,
+      "category": "buff",
+      "modifiers": {},
+      "hot_hp_fraction_per_second": 0.0025
     }
   }
 }

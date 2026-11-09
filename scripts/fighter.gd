@@ -2,6 +2,7 @@ class_name Fighter
 extends Node3D
 # FRG15A - status and passive runtime
 # FRG15B - control status protections
+# FRG15C - damage/healing/cleanse status support
 const STATUS_SCRIPT = preload("res://scripts/combat_status.gd")
 ## A playable fighter (port of the web game's fighter.ts). A brain (player input, CPU, or a
 ## remote player) fills `intent` every frame:
@@ -188,7 +189,22 @@ func add_status(effect_id: String, stacks: int = 1, seconds: float = -1.0) -> bo
 			model.flash(Color("#a6a2ff"), 0.15)
 		elif effect_id == "silence":
 			model.flash(Color("#d89bf0"), 0.15)
+		elif effect_id in ["scorch", "poison"]:
+			model.flash(Color("#ff9456") if effect_id == "scorch" else Color("#78c66a"), 0.16)
+		elif effect_id == "bleed":
+			model.flash(Color("#d74c5a"), 0.16)
+		elif effect_id == "regeneration":
+			model.flash(Color("#52db99"), 0.17)
 	return applied
+
+func cleanse_debuffs(max_count: int = -1) -> int:
+	if status_runtime == null:
+		return 0
+	return status_runtime.cleanse_negative(max_count)
+
+func remove_status(effect_id: String) -> void:
+	if status_runtime != null:
+		status_runtime.clear_effect(effect_id)
 
 func notify_passive_event(event_id: String, other: Node = null) -> void:
 	if status_runtime != null:
