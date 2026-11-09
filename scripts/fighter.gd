@@ -12,6 +12,10 @@ enum S { IDLE, ATTACK, CHARGE, BLOCK, HITSTUN, STAGGER, KO, WIN }
 
 const HOLD_T := 0.22
 const CHARGE_MAX := 0.9
+# FRG09 - queued skills and combo input
+const SKILL_BUFFER_SECONDS := 0.45  # Valid skill presses wait briefly for recovery
+const LIGHT_BUFFER_SECONDS := 0.24  # Late taps during attack rest
+
 const ENGAGE := 1.45
 const MIN_DIST := 0.95
 const GRAVITY := 22.0
@@ -108,6 +112,9 @@ var _stun_pose := "hit"
 var _combo_next := "l1"
 var _combo_timer := 0.0
 var _buffered := false
+var _queued_skill := ""
+var _queued_skill_t := 0.0
+var _queued_light_t := 0.0
 var _atk_prev := false
 var _jump_prev := false
 var _holding := false
@@ -192,7 +199,7 @@ func tick(dt: float) -> void:
 	_read_dodge()
 	_read_attack(dt)
 	_read_jump()
-	_read_skill()
+	_read_skill(dt)
 	match state:
 		S.IDLE:
 			_combo_timer -= dt
@@ -206,6 +213,10 @@ func tick(dt: float) -> void:
 			if not in_block: _set_state(S.IDLE)
 		S.HITSTUN, S.STAGGER:
 			if state_t >= _stun: _set_state(S.IDLE)
+	# Execute buffered inputs after state transitions as well as before them.
+	# Skills take priority over an attack buffered during ranged rest.
+	_try_queued_skill()
+	_try_queued_light(dt)
 	_move(dt)
 	_vertical(dt)
 	if state != S.BLOCK:
@@ -271,16 +282,23 @@ func _read_attack(dt: float) -> void:
 	var released := not on and _atk_prev
 	_atk_prev = on
 	if state in [S.HITSTUN, S.STAGGER, S.KO, S.WIN]:
-		_holding = false; return
-	if pressed and atk_lock > 0.0: return
-	if pressed: _holding = true; _hold_t = 0.0
+		_holding = false
+		return
+	# Record a tap even during ranged attack rest; whether it executes is
+	# decided when the input is released, not when the button goes down.
+	if pressed:
+		_holding = true
+		_hold_t = 0.0
 	if _holding:
 		_hold_t += dt
-		if _hold_t >= HOLD_T and state == S.IDLE and not in_block: _set_state(S.CHARGE)
+		if _hold_t >= HOLD_T and state == S.IDLE and atk_lock <= 0.0 and not in_block:
+			_set_state(S.CHARGE)
 	if released and _holding:
 		_holding = false
-		if state == S.CHARGE: _start_attack("heavy")
-		elif _hold_t < HOLD_T: _request_light()
+		if state == S.CHARGE:
+			_start_attack("heavy")
+		elif _hold_t < HOLD_T:
+			_request_light()
 
 func _read_jump() -> void:
 	var pressed := in_jump and not _jump_prev
@@ -290,19 +308,62 @@ func _read_jump() -> void:
 		on_ground = false
 		if state == S.BLOCK: _set_state(S.IDLE)
 
-func _read_skill() -> void:
-	var k := in_skill
-	if k == "" or cooldowns.get(k, 1.0) > 0.0: return
+func _read_skill(dt: float) -> void:
+	# A press during the wind-up or active phase is buffered briefly rather
+	# than silently lost. A cooldown begins ONLY when the ability actually starts.
+	if state in [S.HITSTUN, S.STAGGER, S.KO, S.WIN]:
+		_queued_skill = ""
+		_queued_skill_t = 0.0
+		return
+	if in_skill != "":
+		var key: String = in_skill
+		if attacks.has(key) and float(cooldowns.get(key, 1.0)) <= 0.0:
+			_queued_skill = key
+			_queued_skill_t = SKILL_BUFFER_SECONDS
+	elif _queued_skill_t > 0.0:
+		_queued_skill_t = maxf(_queued_skill_t - dt, 0.0)
+		if _queued_skill_t <= 0.0:
+			_queued_skill = ""
+	_try_queued_skill()
+
+func _try_queued_skill() -> void:
+	if _queued_skill == "" or _queued_skill_t <= 0.0:
+		return
+	var key: String = _queued_skill
+	if not attacks.has(key) or float(cooldowns.get(key, 1.0)) > 0.0:
+		_queued_skill = ""
+		_queued_skill_t = 0.0
+		return
 	var free: bool = state in [S.IDLE, S.BLOCK, S.CHARGE] or (state == S.ATTACK and atk_phase == 2)
-	if not free: return
+	if not free:
+		return
+	_queued_skill = ""
+	_queued_skill_t = 0.0
 	_holding = false
-	cooldowns[k] = float(attacks[k].cd) * cd_mult
-	_start_attack(k)
+	_buffered = false
+	_combo_next = "l1"
+	_combo_timer = 0.0
+	cooldowns[key] = float(attacks[key].cd) * cd_mult
+	_start_attack(key)
+
+func _try_queued_light(dt: float) -> void:
+	if _queued_light_t <= 0.0:
+		return
+	_queued_light_t = maxf(_queued_light_t - dt, 0.0)
+	if _queued_light_t <= 0.0:
+		return
+	if state == S.IDLE and atk_lock <= 0.0 and not in_block and _queued_skill == "":
+		_queued_light_t = 0.0
+		_start_attack(_combo_next if _combo_timer > 0.0 else "l1")
 
 func _request_light() -> void:
 	if state == S.IDLE or state == S.BLOCK:
-		_start_attack(_combo_next if _combo_timer > 0.0 else "l1")
+		if atk_lock > 0.0:
+			_queued_light_t = LIGHT_BUFFER_SECONDS
+		else:
+			_start_attack(_combo_next if _combo_timer > 0.0 else "l1")
 	elif state == S.ATTACK and not atk.is_empty() and atk.next != "":
+		# One buffered follow-up per swing; cannot multiply damage or skip frames.
 		_buffered = true
 
 func _start_attack(aid: String) -> void:
@@ -313,6 +374,7 @@ func _start_attack(aid: String) -> void:
 	atk = attacks[aid]
 	atk_phase = 0
 	_buffered = false
+	_queued_light_t = 0.0
 	swing_serial += 1
 	if float(atk.self_jump) > 0.0 and atk.mode != "leap":
 		vel_y = float(atk.self_jump); on_ground = false
@@ -479,9 +541,12 @@ func _apply_knock(attacker, speed: float) -> void:
 		_knock_dir = -forward()
 
 func _interrupt_attack() -> void:
-	# A hit or clash cancels pending combo inputs; the next tap starts from l1.
+	# Stuns, clashes, and guard breaks cancel EVERY queued action.
 	_holding = false
 	_buffered = false
+	_queued_skill = ""
+	_queued_skill_t = 0.0
+	_queued_light_t = 0.0
 	_combo_next = "l1"
 	_combo_timer = 0.0
 

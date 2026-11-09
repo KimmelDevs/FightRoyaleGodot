@@ -1,0 +1,38 @@
+FIGHT ROYALE GODOT | UPDATE 09 - SKILLS AND COMBOS
+
+Changes:
+- Skill presses made during attack wind-up/active frames buffer up to 0.45 seconds.
+- Buffered skills execute at the next legal recovery/idle opportunity.
+- Cooldown is applied only when a skill actually begins.
+- Short attack taps during ranged attack rest buffer for up to 0.24 seconds.
+- Light follow-ups retain their original 'next' links and combo duration.
+- Taking a hit, clash, or guard break clears queued commands.
+- Original damage, guard damage, skill cooldowns and poses are unchanged.
+
+Characters with attack data: 17
+Defined Z/X/C/V skills: 68
+
+Existing light-attack chains:
+  ash: l1 -> l2 -> l3
+  aster: l1 -> l2 -> l3
+  bruno: l1 -> l2 -> l3 -> l4 -> l5
+  ember: l1 -> l2 -> l3
+  garrick: l1 -> l2 -> l3
+  kaede: l1 -> l2 -> l3
+  kira: l1 -> l2 -> l3 -> l4
+  leon: l1 -> l2 -> l3
+  marina: l1 -> l2 -> l3
+  nyx: l1 -> l2 -> l3 -> l4
+  raven: l1 -> l2 -> l3
+  rook: l1 -> l2 -> l3 -> l4 -> l5
+  sakura: l1 -> l2 -> l3
+  sylva: l1 -> l2 -> l3
+  vesper: l1 -> l2 -> l3
+  volta: l1 -> l2 -> l3
+  yuki: l1 -> l2 -> l3
+
+Game modes: Duel vs CPU, CPU vs CPU only. No shop changes.
+Godot note: opening the project in the editor imports new .vrm files before play.
+To test: attack tap during a combo, Z/X/C during wind-up and during recovery,
+then verify each skill casts once and its cooldown starts on cast.
+This report statically validates attack data; it is not an engine gameplay test.
