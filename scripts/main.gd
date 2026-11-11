@@ -281,7 +281,9 @@ func show_prepare() -> void:
 		var time_row := HBoxContainer.new()
 		time_row.add_theme_constant_override("separation", 12)
 		v.add_child(time_row)
-		_text(time_row, "Round limit:", 18)
+		var round_label := _text(time_row, "Round limit:", 18)
+		round_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+		round_label.custom_minimum_size = Vector2(145, 36)
 		var timer := OptionButton.new()
 		timer.custom_minimum_size = Vector2(180, 36)
 		var durations := [60, 120, 180, 0]
@@ -392,28 +394,28 @@ func show_settings() -> void:
 
 # FRG18B - UI sounds and persistent audio levels
 func _set_audio_level(percent: float, channel: String) -> void:
-    AudioSettings.set_level(channel, percent / 100.0)
+	AudioSettings.set_level(channel, percent / 100.0)
 
 func _audio_settings_section(parent: VBoxContainer) -> void:
-    _title(parent, "Audio", 24)
-    var audio_grid := GridContainer.new()
-    audio_grid.columns = 2
-    audio_grid.add_theme_constant_override("h_separation", 20)
-    audio_grid.add_theme_constant_override("v_separation", 5)
-    parent.add_child(audio_grid)
-    for item in [["master", "Master"], ["combat", "Combat SFX"], ["clashes", "Parries / Clashes"], ["ui", "Menu Sounds"], ["music", "Music (future)"]]:
-        var channel: String = String(item[0])
-        _text(audio_grid, String(item[1]), 16)
-        var slider := HSlider.new()
-        slider.custom_minimum_size = Vector2(360, 23)
-        slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-        slider.min_value = 0.0
-        slider.max_value = 100.0
-        slider.step = 1.0
-        slider.value = AudioSettings.get_level(channel) * 100.0
-        slider.value_changed.connect(_set_audio_level.bind(channel))
-        audio_grid.add_child(slider)
-    _text(parent, "Changes apply instantly and are saved automatically.", 13)
+	_title(parent, "Audio", 24)
+	var audio_grid := GridContainer.new()
+	audio_grid.columns = 2
+	audio_grid.add_theme_constant_override("h_separation", 20)
+	audio_grid.add_theme_constant_override("v_separation", 5)
+	parent.add_child(audio_grid)
+	for item in [["master", "Master"], ["combat", "Combat SFX"], ["clashes", "Parries / Clashes"], ["ui", "Menu Sounds"], ["music", "Music (future)"]]:
+		var channel: String = String(item[0])
+		_text(audio_grid, String(item[1]), 16)
+		var slider := HSlider.new()
+		slider.custom_minimum_size = Vector2(360, 23)
+		slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		slider.min_value = 0.0
+		slider.max_value = 100.0
+		slider.step = 1.0
+		slider.value = AudioSettings.get_level(channel) * 100.0
+		slider.value_changed.connect(_set_audio_level.bind(channel))
+		audio_grid.add_child(slider)
+	_text(parent, "Changes apply instantly and are saved automatically.", 13)
 
 func _begin_rebind(action: String, slot: int, button: Button) -> void:
 	_rebinding = [action, slot]

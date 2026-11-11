@@ -35,6 +35,9 @@ var blade_base: Node3D   ## trail start
 var blade_tip: Node3D    ## trail end / projectile origin
 var cast_point: Node3D
 var shield_node: Node3D
+var _browser_weapon_r: Node3D
+var _browser_weapon_l: Node3D
+var _browser_old_parts: Array[MeshInstance3D] = []
 var walk := 0.0
 var run := 0.0  # FRG06 - locomotion and procedural footwork
 var strafe := 0.0
@@ -115,6 +118,7 @@ func setup(look_data: Dictionary) -> void:
 	_flash_mat.albedo_color = Color(1, 1, 1, 0.85)
 	_flash_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	_build_weapons()
+	_install_browser_weapon_meshes()
 	play_pose("idle", 10)
 
 func _fallback_piece(parent: Node3D, dimensions: Vector3, center: Vector3, color: Color) -> MeshInstance3D:
@@ -246,6 +250,7 @@ func _glow(c: String) -> StandardMaterial3D:
 func _part(parent: Node3D, mesh: Mesh, mat: Material, pos := Vector3.ZERO, rot := Vector3.ZERO, scl := Vector3.ONE) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	mi.mesh = mesh
+	_browser_old_parts.append(mi)
 	mi.material_override = mat
 	mi.position = pos
 	mi.rotation = rot
@@ -304,6 +309,8 @@ func _build_weapons() -> void:
 	var mount_profile: Dictionary = WeaponMount.profile_for(look, loaded_model_id)
 	var r: Node3D = WeaponMount.configure_grip(_grip("Right"), mount_profile, "right")
 	var l: Node3D = WeaponMount.configure_grip(_grip("Left"), mount_profile, "left")
+	_browser_weapon_r = r
+	_browser_weapon_l = l
 	match kit:
 		"wind": # FRG19T — lightweight glowing wind wraps on both fists.
 			for grip in [r, l]:
@@ -556,3 +563,33 @@ func _heater(w: float, h: float, depth: float) -> Mesh:
 	return st.commit()
 
 # FRG16D - animation lab preview timeline
+
+
+# FRG20H - Original Three.js browser weapon meshes (GLB) on existing VRM hand grips.
+# Keep the gameplay anchors (blade_base, blade_tip, shield_node, cast_point) unchanged.
+func _install_browser_weapon_meshes() -> void:
+	var fid: String = character_id.strip_edges().to_lower()
+	if fid.is_empty():
+		fid = String(look.get("name", "")).to_lower()
+	var installed := false
+	for side in ["right", "left"]:
+		var grip: Node3D = _browser_weapon_r if side == "right" else _browser_weapon_l
+		if not is_instance_valid(grip):
+			continue
+		var path: String = "res://weapons/browser/%s_%s.glb" % [fid, side]
+		if not ResourceLoader.exists(path):
+			continue
+		var resource: Resource = ResourceLoader.load(path)
+		if not (resource is PackedScene):
+			continue
+		var instance: Node = (resource as PackedScene).instantiate()
+		if not (instance is Node3D):
+			if is_instance_valid(instance):
+				instance.queue_free()
+			continue
+		grip.add_child(instance)
+		installed = true
+	if installed:
+		for old_mesh in _browser_old_parts:
+			if is_instance_valid(old_mesh):
+				old_mesh.visible = false
