@@ -1,4 +1,5 @@
 class_name Match
+# FRG17C - elemental hit and skill VFX
 # FRG17A - combat impact VFX
 extends Node3D
 # FRG15A - status and passive runtime
@@ -730,6 +731,8 @@ func _impact(a: Dictionary, pos: Vector3, color: Color, radius: float) -> void:
 			fx.ring(g + Vector3(0, 1.0, 0), color, radius, 0.2, 0.9)
 		_:
 			fx.sparks(pos, color, 14, 5.0)
+	# FRG17C: visual-only elemental accent for skill impact events.
+	fx.elemental_skill_17c(g, String(a.get("element", "")), String(a.get("style", "")), color, radius)
 
 func _buff(f: Fighter, a: Dictionary) -> void:
 	var pvp: bool = cfg.mode != "survival"
@@ -787,6 +790,9 @@ func apply_hit(attacker, d: Fighter, a: Dictionary, power: float, hit_pos: Vecto
 		"hit", "crit", "ko":
 			var crit := d.last_crit
 			fx.combat_hit(hit_pos, glow, dir, heavy)
+			# FRG17C: cosmetic accent only after a landed hit.
+			if attacker is Fighter:
+				fx.elemental_hit_17c(hit_pos, String(attacker.look.element), glow, heavy)
 			fx.number(hit_pos + Vector3(0, 0.5, 0), "%d%s" % [int(d.last_damage), "!" if crit else ""], Color("#ffb347") if crit else Color.WHITE, 1.5 if crit else 1.0)
 			if attacker is Fighter and attacker.lifesteal > 0: attacker.heal(d.last_damage * attacker.lifesteal)
 			if attacker is Fighter and attacker.look.element == "earth": fx.rocks(d.position, 12 if heavy else 6, 0.9 if heavy else 0.6)

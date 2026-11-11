@@ -1,0 +1,11 @@
+Fight Royale Godot - Update 17C (Elemental Hit and Skill VFX)
+
+- Small elemental accents only on landed melee hits: fire, lightning, water,
+  moon/shadow/blood, light/nature/blossom and chi/force.
+- Elemental skill impact accents by style and element (meteor, lightning,
+  spin, slam, cleave and water/shadow magic).
+- Uses built-in MultiMesh particles/materials; compatible with GL renderer.
+- Purely cosmetic: damage, status, AI, cooldowns, range and hitboxes unchanged.
+- VRM rigging and Animation Lab saved profiles are untouched.
+- No SFX paths are changed. Audio integration remains a later update.
+- Test within Godot after script import, in both Duel vs CPU and CPU vs CPU.

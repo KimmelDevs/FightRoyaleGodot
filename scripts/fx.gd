@@ -244,3 +244,68 @@ func combat_clash(pos: Vector3) -> void:
 	sparks(pos, tint, 38, 9.0)
 	_vfx17a_rays(pos, tint, Vector3.UP, 22, 1.55, 0.23)
 	ring(pos, tint, 2.45, 0.35, 0.87)
+
+# FRG17C - elemental hit and skill VFX
+# Cosmetic only: all damage, status, guard, projectile and AI calculations are unchanged.
+# Lightweight MultiMesh bursts, with fewer particles on non-heavy strikes.
+func elemental_hit_17c(at: Vector3, element: String, tint: Color, heavy: bool) -> void:
+	var n := 11 if heavy else 5
+	var color_key := element.to_lower()
+	match color_key:
+		"fire", "flame":
+			var ember := BoxMesh.new()
+			ember.size = Vector3(0.055, 0.10, 0.035)
+			burst(at, ember, unlit(Color("#ff8b3d"), 0.95, true), n, 3.9, Vector3.UP, 1.0, -1.8, 0.42, 1.0)
+			if heavy: flash(at, Color("#ffba54"), 0.35, 0.16, 0.5)
+		"electric", "lightning":
+			var spark := BoxMesh.new()
+			spark.size = Vector3(0.025, 0.025, 0.19)
+			burst(at, spark, unlit(Color("#d3f0ff"), 0.95, true), n + 3, 6.0, Vector3.ZERO, 1.0, 4.0, 0.20, 1.0)
+			if heavy: ring(at, Color("#83d4ff"), 0.85, 0.17, 0.65)
+		"water":
+			var droplet := SphereMesh.new()
+			droplet.radius = 0.045
+			droplet.height = 0.09
+			droplet.radial_segments = 6
+			droplet.rings = 3
+			burst(at, droplet, unlit(Color("#7bd7ff"), 0.75, true), n, 3.3, Vector3.UP, 1.2, 7.0, 0.36, 1.0)
+			if heavy: ring(at, Color("#4caaff"), 0.8, 0.2, 0.45)
+		"shadow", "moon", "blood":
+			var dark_tint := Color("#b17bef") if color_key != "blood" else Color("#e44869")
+			sparks(at, dark_tint, n + 2, 3.3)
+			if heavy: flash(at, dark_tint, 0.45, 0.2, 0.42)
+		"light", "blossom", "nature":
+			motes(at, tint, n)
+			if heavy: ring(at, tint, 0.7, 0.17, 0.46)
+		"chi", "force":
+			if heavy: ring(at, tint, 1.05, 0.22, 0.62)
+		# Earth already emits rocks in Match; no duplicate burst here.
+		_:
+			pass
+
+func elemental_skill_17c(at: Vector3, element: String, style: String, tint: Color, radius: float) -> void:
+	var r := clampf(radius, 0.35, 5.0)
+	match style:
+		"lightning":
+			var ray := BoxMesh.new()
+			ray.size = Vector3(0.035, 0.25, 0.035)
+			burst(at + Vector3.UP * 0.5, ray, unlit(Color("#d7f4ff"), 0.9, true), 15, 7.5, Vector3.UP, 0.85, 0.0, 0.27, 1.1)
+		"meteor", "explosion":
+			var coal := BoxMesh.new()
+			coal.size = Vector3(0.08, 0.08, 0.08)
+			burst(at + Vector3.UP * 0.25, coal, unlit(Color("#ff9d5b"), 0.85, true), 15, 4.2, Vector3.UP, 1.0, 12.0, 0.50, 1.0)
+		"spin":
+			motes(at + Vector3.UP * 0.65, tint, 10)
+		"slam", "cleave":
+			# 17A provides the ground crack and directional burst; add a small dust bloom.
+			motes(at + Vector3.UP * 0.25, Color("#dac2a2"), 6)
+		_:
+			match element.to_lower():
+				"water":
+					ring(at, Color("#83d7ff"), r * 0.7, 0.21, 0.47)
+				"moon", "shadow", "blood":
+					flash(at + Vector3.UP * 0.4, tint, r * 0.28, 0.19, 0.3)
+				"nature", "blossom", "light":
+					motes(at + Vector3.UP * 0.4, tint, 7)
+				_:
+					pass
