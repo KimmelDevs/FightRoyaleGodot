@@ -1,0 +1,6 @@
+Update 19U — Raven: Electric Witch
+Existing Raven and raven.vrm preserved.
+Blink Z unchanged; Chain Lightning X and Thunderstorm C cause paralysis only on successful HP hits.
+Static Field V is a real five-second radius-3m zone; slows enemies while inside and periodically shocks them.
+Zone ignores allies, clears on KO/rematch and does not tick while paused.
+NOTE: Godot editor compilation and visual gameplay are not verified here.

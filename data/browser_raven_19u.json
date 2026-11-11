@@ -1,0 +1,22 @@
+{
+  "version": "19U.1",
+  "character": "raven",
+  "kind": "EXISTING FIGHTER REFINEMENT",
+  "source": "https://raw.githubusercontent.com/KimmelDevs/Fight-Royale/main/web/src/game/kits.ts",
+  "abilities": {
+    "z": "Blink backwards, 4s cooldown",
+    "x": "Chain Lightning with confirmed-hit paralysis, 6s cooldown",
+    "c": "Thunderstorm three strikes, 12s cooldown; each confirmed hit can paralyze",
+    "v": "Static Field, 5s duration, radius 3m, 13s cooldown; slows and periodically paralyzes enemies inside"
+  },
+  "guarantees": [
+    "No changes to VRM files",
+    "No shop or currency changes",
+    "No changes to other fighters"
+  ],
+  "notes": [
+    "Field ends on caster KO, expiry or rematch",
+    "Periodic field paralysis uses short shocks with existing control-immunity rules",
+    "Godot gameplay not tested in this environment"
+  ]
+}

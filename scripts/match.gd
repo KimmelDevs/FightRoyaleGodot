@@ -44,6 +44,8 @@ var _roxy_puppets: Array[Dictionary] = []
 var _ember_patches: Array[Dictionary] = []
 # FRG19P — team-aware healing pools, cleared each round.
 var _marina_pools: Array[Dictionary] = []
+# FRG19U — stationary Raven shock zones, destroyed on rematch.
+var _raven_fields: Array[Dictionary] = []
 var _trails: Dictionary = {}    # Fighter -> Trail
 var _frg19b_multi_phase: Dictionary = {}
 var _melee_hits: Dictionary = {}  # FRG07 - persistent melee contact and directional knockback
@@ -163,6 +165,9 @@ func start_round() -> void:
 	for water_pool in _marina_pools:
 		if is_instance_valid(water_pool["node"]): water_pool["node"].queue_free()
 	_marina_pools.clear()
+	for field in _raven_fields:
+		if is_instance_valid(field["node"]): field["node"].queue_free()
+	_raven_fields.clear()
 	fighters.clear(); _trails.clear(); _melee_hits.clear(); _frg19b_multi_phase.clear(); _projectiles.clear(); _strike_marks.clear(); _timers.clear()
 	_duel_seconds_left = float(cfg.get("round_seconds", 120))
 	_duel_clock_running = false
@@ -371,6 +376,7 @@ func _process(real_dt: float) -> void:
 	_roxy_step_puppets(dt)
 	_ember_step_patches(dt) # FRG19N: no burning-ground ticks during pause
 	_marina_step_pools(dt) # FRG19P: heal only while simulation advances
+	_raven_step_fields(dt) # FRG19U: status ticks halt during pause/hitstop
 	_nythera_step_wells(dt)
 	_veyr_step_festivals(dt)
 	_blade_light(dt)
@@ -446,6 +452,60 @@ func _on_swing(f: Fighter) -> void:
 		"blink": _blink(f, a)
 		_: _melee(f, a)
 
+
+# FRG19U — Raven's Static Field: spatial, team-aware and time-limited.
+func _raven_spawn_field(caster: Fighter, attack: Dictionary) -> void:
+	if round_over or not is_instance_valid(caster) or caster.is_down(): return
+	var radius: float = float(attack.get("radius", 3.0))
+	var marker := MeshInstance3D.new()
+	var mesh := CylinderMesh.new()
+	mesh.top_radius = 1.0
+	mesh.bottom_radius = 1.0
+	mesh.height = 0.024
+	marker.mesh = mesh
+	marker.material_override = Fx.unlit(Color("#83f5bc"), 0.37, true)
+	marker.scale = Vector3(radius, 1.0, radius)
+	add_child(marker)
+	var center: Vector3 = Vector3(caster.position.x, 0.0, caster.position.z)
+	marker.global_position = center + Vector3(0.0, 0.045, 0.0)
+	_raven_fields.append({"node": marker, "owner": caster, "team": caster.team,
+		"center": center, "radius": radius, "seconds": float(attack.get("duration", 5.0)),
+		"slow_tick": 0.0, "shock_tick": 0.65, "ring_tick": 0.0})
+	fx.ring(center, Color("#65f1b1"), radius, 0.35, 0.85)
+	fx.number(caster.chest() + Vector3(0.0, 0.75, 0.0), "STATIC FIELD", Color("#b3ffd8"), 0.85)
+
+func _raven_step_fields(dt: float) -> void:
+	if dt <= 0.0 or round_over: return
+	for field in _raven_fields.duplicate():
+		var owner: Fighter = field["owner"]
+		field["seconds"] = float(field["seconds"]) - dt
+		if not is_instance_valid(owner) or owner.is_down(): field["seconds"] = 0.0
+		if float(field["seconds"]) <= 0.0:
+			if is_instance_valid(field["node"]): field["node"].queue_free()
+			_raven_fields.erase(field)
+			continue
+		field["slow_tick"] = float(field["slow_tick"]) + dt
+		field["shock_tick"] = float(field["shock_tick"]) + dt
+		field["ring_tick"] = float(field["ring_tick"]) + dt
+		if float(field["ring_tick"]) >= 0.70:
+			field["ring_tick"] = 0.0
+			fx.ring(field["center"], Color("#74ffa9"), float(field["radius"]), 0.20, 0.50)
+		var slow_due: bool = float(field["slow_tick"]) >= 0.38
+		var shock_due: bool = float(field["shock_tick"]) >= 1.55
+		if not slow_due and not shock_due: continue
+		if slow_due: field["slow_tick"] = 0.0
+		if shock_due: field["shock_tick"] = 0.0
+		for victim in fighters:
+			if victim.team == int(field["team"]) or victim.is_down(): continue
+			var separation: Vector3 = victim.position - field["center"]
+			separation.y = 0.0
+			if separation.length() > float(field["radius"]) + victim.radius * 0.25: continue
+			if slow_due:
+				# Refreshes a short movement debuff; only targets inside the area.
+				victim.add_status("slow", 1, 0.55)
+			if shock_due and victim.add_status("paralyze", 1, 0.45):
+				fx.flash(victim.chest(), Color("#a6ffda"), 0.45, 0.12, 0.82)
+				fx.number(victim.chest() + Vector3(0.0, 0.6, 0.0), "SHOCK", Color("#b3ffd8"), 0.65)
 
 # FRG19P — Healing Water is a real area, not an instant self-heal.
 func _marina_spawn_pool(caster: Fighter, attack: Dictionary) -> void:
@@ -1489,6 +1549,9 @@ func _impact(a: Dictionary, pos: Vector3, color: Color, radius: float) -> void:
 func _buff(f: Fighter, a: Dictionary) -> void:
 	var pvp: bool = cfg.mode != "survival"
 	match a.mode:
+		"raven_static_field": # FRG19U: five-second area with actual periodic CC.
+			if f.kit == "mage" and String(f.look.get("element", "")) == "electric":
+				_raven_spawn_field(f, a)
 		"marina_bubble": # FRG19P: HP damage mitigation, not the old invincible ward.
 			f.marina_bubble_t = float(a.get("duration", 5.0))
 			fx.ring(f.position, Color("#73d8ff"), 1.6, 0.30, 0.8)
