@@ -271,6 +271,21 @@ func _build_weapons() -> void:
 	var l: Node3D = WeaponMount.configure_grip(_grip("Left"), mount_profile, "left")
 	match kit:
 
+		"chainblade": # FRG19C segmented chainblade, procedural first pass
+			var weapon := _pivot(r)
+			_part(weapon, _cyl(0.022, 0.022, 0.35), _mat(L.pants), Vector3(0, -0.05, 0))
+			_part(weapon, _box(0.29, 0.045, 0.075), trim, Vector3(0, 0.15, 0))
+			for i in range(7):
+				var piece := _pivot(weapon, Vector3(0, 0.21 + float(i) * 0.21, 0))
+				_part(piece, _box(0.14 - float(i) * 0.008, 0.19, 0.045), steel, Vector3.ZERO)
+				_part(piece, _box(0.025, 0.15, 0.048), glow, Vector3.ZERO)
+				if i > 0:
+					_part(piece, _cyl(0.022, 0.022, 0.08), _mat(L.band), Vector3(0, -0.11, 0))
+			blade_base = _pivot(weapon, Vector3(0, 0.34, 0))
+			blade_tip = _pivot(weapon, Vector3(0, 1.68, 0))
+			cast_point = blade_tip
+			shield_node = l
+
 		"glaive": # FRG19B — original double-ended Storm Glaive (right hand)
 			var shaft := _pivot(r)
 			_part(shaft, _cyl(0.018, 0.018, 1.38, 16), _mat(L.metal, true), Vector3(0, 0, 0))

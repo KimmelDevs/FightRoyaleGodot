@@ -70,5 +70,13 @@
     "walk": 3.15,
     "parry": 0.19,
     "jump": 7.7
+  },
+  "chainblade": {
+    "hp": 2450,
+    "guard": 100,
+    "move": 3.55,
+    "walk": 2.75,
+    "parry": 0.16,
+    "jump": 7.0
   }
 }

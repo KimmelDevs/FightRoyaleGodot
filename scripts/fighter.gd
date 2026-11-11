@@ -77,6 +77,10 @@ var hp := 2500.0
 var max_guard := 100.0
 var guard := 100.0
 var guard_fatigue := 0
+
+# FRG19C Kaizen: target captured by a confirmed Predator's Hook contact.
+var kaizen_bound_target: Fighter = null
+var kaizen_bind_seconds := 0.0
 var zarek_momentum := 0  # FRG19B projectile-destroy Clash Momentum
 var _fatigue_decay := 3.0
 var move_speed := 3.2
@@ -281,6 +285,12 @@ func tick(dt: float) -> void:
 			guard_fatigue -= 1
 			_fatigue_decay = FATIGUE_DECAY_SECONDS
 
+
+	# FRG19C: bind lifetime, no persistence across KO or another match.
+	if kaizen_bind_seconds > 0.0:
+		kaizen_bind_seconds = maxf(0.0, kaizen_bind_seconds - dt)
+		if kaizen_bind_seconds <= 0.0 or not is_instance_valid(kaizen_bound_target) or kaizen_bound_target.is_down():
+			kaizen_bound_target = null
 	for k in cooldowns: cooldowns[k] = maxf(cooldowns[k] - dt, 0.0)
 	atk_lock = maxf(atk_lock - dt, 0.0)
 	dash_cd = maxf(dash_cd - dt, 0.0)
@@ -407,6 +417,20 @@ func _read_jump() -> void:
 		if state == S.BLOCK: _set_state(S.IDLE)
 
 func _read_skill(dt: float) -> void:
+
+	# FRG19C: X recast reels a previously bound enemy to Kaizen (even during X cooldown).
+	if kit == "chainblade" and in_skill == "x" and kaizen_bind_seconds > 0.0 and is_instance_valid(kaizen_bound_target):
+		var victim: Fighter = kaizen_bound_target
+		kaizen_bound_target = null
+		kaizen_bind_seconds = 0.0
+		if not victim.is_down():
+			var pull_to: Vector3 = global_position + forward() * 1.25
+			pull_to.y = victim.position.y
+			victim.teleport(pull_to)
+			victim.remove_status("root")
+			victim.stagger(0.40)
+		in_skill = ""
+		return
 	# A press during the wind-up or active phase is buffered briefly rather
 	# than silently lost. A cooldown begins ONLY when the ability actually starts.
 	if state in [S.HITSTUN, S.STAGGER, S.KO, S.WIN]:
@@ -578,7 +602,7 @@ func _move(dt: float) -> void:
 		if _knock > 0.0:
 			pos += _knock_dir * _knock * dt
 
-		var steer := 1.0 if state == S.IDLE else 0.5 if state == S.BLOCK else 0.4 if state == S.CHARGE else 0.0
+		var steer := 1.0 if state == S.IDLE else 0.5 if state == S.BLOCK else 0.4 if state == S.CHARGE else 0.35 if kit == "chainblade" and state == S.ATTACK and atk_id in ["z", "c"] else 0.0
 		# Don't let direct input instantly erase a strong knockback reaction.
 		if _knock > 0.2: steer *= 0.35
 		var requested := Vector3.ZERO

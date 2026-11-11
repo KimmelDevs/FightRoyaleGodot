@@ -1,0 +1,10 @@
+Fight Royale Godot 19C — Kaizen Chainblade Berserker first playable import
+Five light combo, heavy, Z/X/C/V kit available in Duel vs CPU and CPU vs CPU.
+X successful contact applies root for 4s; press X again while bound to reel enemy.
+Z/C have actual multi-hit contact phases through Update 19B.
+V has initial bind hit; cinematic Z/X finishers are not implemented yet.
+Spinning chainblade movement steers slightly while using Z/C.
+Uses models/kaizen.vrm if imported; otherwise the existing model fallback applies.
+Weapon is a procedural static segmented blade, not a physics chain rig.
+Original browser CB_* poses use interim greatsword aliases in this stage.
+No shop, online multiplayer, or extra modes added.

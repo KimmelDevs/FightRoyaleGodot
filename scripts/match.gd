@@ -791,6 +791,19 @@ func _blink(f: Fighter, a: Dictionary) -> void:
 
 func apply_hit(attacker, d: Fighter, a: Dictionary, power: float, hit_pos: Vector3, dir: Vector3, ranged: bool) -> void:
 	var result := d.receive_hit(attacker, a, power)
+
+	# FRG19C: confirmed contacts only. Blocks, parries, clashes and invulnerable
+	# enemies cannot be chain-bound. The victim's existing CC rules do the locking.
+	if attacker is Fighter and attacker.kit == "chainblade" and result in ["hit", "crit"]:
+		var chain_style: String = String(a.get("style", ""))
+		if chain_style == "chain_predator_hook":
+			if d.add_status("root", 1, 4.0):
+				attacker.kaizen_bound_target = d
+				attacker.kaizen_bind_seconds = 4.0
+				fx.ring(hit_pos, Color(attacker.look.glow), 1.0, 0.25, 0.7)
+		elif chain_style == "chain_serpent_bind":
+			d.add_status("root", 1, 1.4)
+			fx.ring(hit_pos, Color(attacker.look.glow), 1.6, 0.30, 0.9)
 	if result in ["hit", "crit", "ko"]:
 		d.notify_passive_event("received_hit", attacker if attacker is Fighter else null)
 		if attacker is Fighter:
