@@ -1,0 +1,22 @@
+{
+  "version": "19I.1",
+  "character": "renji",
+  "browser_reference": "https://github.com/KimmelDevs/Fight-Royale/blob/main/web/src/game/kits.ts",
+  "status": "FIRST PLAYABLE PORT — DIRECTIONAL COUNTER AND CHOREOGRAPHY REFINEMENT PENDING",
+  "implemented": [
+    "five blunt-hit lights and heavy",
+    "7-contact Hundred Fangs",
+    "Iron Reflection 15s automatic parry on parryable hits",
+    "two-contact Blindside Step",
+    "eightfold V plus ninth hit at 3 Reads",
+    "Read stacks only on confirmed parries",
+    "procedural twin tonfas with no blade trail"
+  ],
+  "pending": [
+    "true directional parry-counter choreography",
+    "three-Read finisher animation variations",
+    "separate elbow and knee VRM poses",
+    "tonfa extension, guard-ring and hook transformations",
+    "Godot engine and gameplay validation"
+  ]
+}

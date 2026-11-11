@@ -1,0 +1,6 @@
+Update 19I - Renji: The Counter Fist (first playable port)
+Model uses models/aster.vrm until a dedicated renji.vrm is provided; preserve any existing assets.
+Z: Hundred Fangs (7 real contact checks); X: Iron Reflection (15s auto parries);
+C: Blindside Step (2 real contacts); V: Final Verdict: Eightfold (+1 beat at 3 Reads).
+Read x3 bonus is consumed by V. No sword slash VFX.
+Custom directional counters, tonfa transformations, dedicated VRM poses and full parity remain for refinement.

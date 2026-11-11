@@ -198,8 +198,11 @@
     },
     "renji": {
       "archetype": "knuckles",
-      "parry_scale": 1.4,
-      "heavy_scale": 0.71
+      "attack_pace": 1.19,
+      "skill_pace": 1.11,
+      "approach_scale": 1.17,
+      "orbit_scale": 1.22,
+      "parry_scale": 1.29
     }
   }
 }

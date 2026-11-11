@@ -463,6 +463,19 @@ func _build_weapons() -> void:
 				_part(g, _box(0.09, 0.022, 0.03), trim, Vector3(0, 0.07, 0))
 				_part(g, _box(0.04, 0.3, 0.01), steel, Vector3(0, 0.23, 0))
 			blade_base = _pivot(r, Vector3(0, 0.12, 0)); blade_tip = _pivot(r, Vector3(0, 0.42, 0)); shield_node = l
+
+		"tonfa": # FRG19I — one blunt offset-grip tonfa on each forearm (no blades)
+			for grip in [r, l]:
+				var staff := _pivot(grip, Vector3(0.0, -0.11, -0.06))
+				# Main shaft projects along forearm; the short perpendicular handle stays in palm.
+				_part(staff, _cyl(0.035, 0.041, 0.55, 12), _mat(L.metal, true), Vector3(0.0, 0.23, 0.0))
+				_part(staff, _cyl(0.041, 0.041, 0.12, 12), trim, Vector3(0.0, 0.47, 0.0))
+				_part(staff, _cyl(0.032, 0.032, 0.24, 12), _mat(L.band), Vector3(0.0, 0.10, -0.10), Vector3(PI * 0.5, 0.0, 0.0))
+				_part(staff, _box(0.075, 0.035, 0.075), glow, Vector3(0.0, 0.52, 0.0))
+			blade_base = _pivot(r, Vector3(0.0, 0.02, 0.0))
+			blade_tip = _pivot(r, Vector3(0.0, 0.40, 0.0))
+			cast_point = blade_tip
+			shield_node = l
 		"knuckles":
 			for g in [r, l]:
 				_part(g, _box(0.1, 0.09, 0.1), _mat(L.metal, true), Vector3(0.03, 0, 0.0))

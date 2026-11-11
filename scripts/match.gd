@@ -215,7 +215,7 @@ func _spawn(slot: Dictionary, team: int, pos: Vector3) -> Fighter:
 		fx.smoke(x.global_position, Color(x.look.glow))
 		fx.ring(x.global_position, Color(x.look.glow), 1.2, 0.2, 0.7))
 	fighters.append(f)
-	if f.model.blade_base and f.model.blade_tip:
+	if f.kit != "tonfa" and f.model.blade_base and f.model.blade_tip:
 		var tr := Trail.new(f.model.blade_base, f.model.blade_tip, Color(f.look.glow))
 		# FRG17B: visual styling uses the existing character kit / element.
 		tr.configure(String(f.kit), String(f.look.get("element", "")))
@@ -397,6 +397,7 @@ func _on_swing(f: Fighter) -> void:
 			"zenith_barrage": _zenith_barrage(f, a)
 			"zenith_arsenal": _zenith_arsenal(f, a); return
 	if f.kit == "scythe" and String(a.get("type", "")) == "melee": _nythera_schedule_beats(f, a)
+	if f.kit == "tonfa" and String(a.get("type", "")) == "melee": _renji_schedule_beats(f, a)
 	if f.kit == "tristaff" and String(a.get("type", "")) == "melee":
 		_zephyr_schedule_beats(f, a)
 	match a.type:
@@ -575,6 +576,25 @@ func _nythera_step_wells(dt: float) -> void:
 			if gap > 0.95 and gap <= 2.8:
 				var pull: float = minf(gap - 0.95, dt * 1.3)
 				target.position += delta.normalized() * pull
+
+
+# FRG19I — each tonfa beat is separately blockable, parryable, clashable and dodgeable.
+# Never invoke a magical slash; all contacts share ordinary melee collision.
+func _renji_schedule_beats(f: Fighter, a: Dictionary) -> void:
+	var count: int = int(a.get("multi_hit", 1))
+	if count <= 1 or not f.active_melee(): return
+	var serial: int = f.swing_serial
+	var round_id: int = _round
+	var span: float = float(a.get("active", 0.0)) * f.attack_time_multiplier()
+	for beat in range(1, count):
+		var wait_time: float = span * float(beat) / float(count)
+		later(wait_time, func():
+			_renji_beat(f, a, serial, round_id, beat))
+
+func _renji_beat(f: Fighter, a: Dictionary, serial: int, round_id: int, beat: int) -> void:
+	if round_over or _round != round_id or not is_instance_valid(f) or f.is_down(): return
+	if f.swing_serial != serial or not f.active_melee(): return
+	_melee(f, a, beat)
 
 func _zephyr_schedule_beats(f: Fighter, a: Dictionary) -> void:
 	var count: int = int(a.get("multi_hit", 1))
@@ -1008,6 +1028,11 @@ func _buff(f: Fighter, a: Dictionary) -> void:
 				pulse["style"] = "gravity_meteor"
 				_strike(f, pulse, f.atk_power)
 
+
+		"renji_reflection": # FRG19I — no invulnerability to truly unparryable hits
+			f.renji_reflection_t = float(a.get("duration", 15.0))
+			fx.ring(f.position, Color("#bc8cff"), 1.4, 0.3, 0.8)
+			fx.number(f.chest() + Vector3(0, 0.7, 0), "IRON REFLECTION", Color("#e4c8ff"), 0.8)
 		"frost_aegis":
 			# FRG19E: four charges for a maximum of seven seconds (no stacking).
 			f.roxy_aegis_charges = 4

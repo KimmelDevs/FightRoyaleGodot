@@ -95,6 +95,12 @@ var kaizen_bind_seconds := 0.0
 # FRG19F Zenith - +0.01 action speed per real damage event, 14-stack cap.
 
 # FRG19G Zephyr: STAFF / SPLIT / WHIP / FOLDED and 25-second Dragon Rhythm.
+
+# FRG19I — Renji: Reads only from confirmed parries; reflection only auto-parries
+# attacks the ordinary parry system would allow.
+var renji_reflection_t := 0.0
+var renji_reads := 0
+var renji_read_timer := 0.0
 var in_mode_switch := false
 
 # FRG19H — Nythera's Moonfloat / Dreadfall stance and temporary Orbit Marks.
@@ -266,6 +272,10 @@ func notify_passive_event(event_id: String, other: Node = null) -> void:
 	# FRG19B: only real projectile destroys earn Zarek's Clash Momentum.
 	if kit == "glaive" and String(look.get("element", "")) == "storm" and event_id == "projectile_destroyed":
 		zarek_momentum += 1
+
+	if kit == "tonfa" and event_id == "parried":
+		renji_reads = mini(3, renji_reads + 1)
+		renji_read_timer = 30.0
 	if status_runtime != null:
 		status_runtime.on_event(event_id, other)
 
@@ -275,6 +285,10 @@ func status_summary() -> String:
 		return "Momentum x%d" % zarek_momentum if summary.is_empty() else "Momentum x%d, %s" % [zarek_momentum, summary]
 	if kit == "glaive" and String(look.get("element", "")) == "metal" and zenith_magnetic_stacks > 0:
 		return "Magnetic x%d" % zenith_magnetic_stacks if summary.is_empty() else "Magnetic x%d, %s" % [zenith_magnetic_stacks, summary]
+	if kit == "tonfa":
+		var tag: String = "READ x%d" % renji_reads
+		if renji_reflection_t > 0.0: tag += " · REFLECT %.1fs" % renji_reflection_t
+		return tag if summary.is_empty() else tag + ", " + summary
 	if kit == "tristaff":
 		var tag: String = ["STAFF", "SPLIT", "WHIP", "FOLDED"][zephyr_mode] + " · Rhythm x%d" % zephyr_rhythm_stacks
 		return tag if summary.is_empty() else tag + ", " + summary
@@ -366,6 +380,15 @@ func tick(dt: float) -> void:
 			roxy_aegis_charges = 0
 	roxy_freeze_cd = maxf(0.0, roxy_freeze_cd - dt)
 
+
+	# FRG19I reflection decays in match-time; cannot block manually while active.
+	if kit == "tonfa":
+		renji_reflection_t = maxf(0.0, renji_reflection_t - dt)
+		if renji_reflection_t > 0.0:
+			in_block = false
+		if renji_read_timer > 0.0:
+			renji_read_timer = maxf(0.0, renji_read_timer - dt)
+			if renji_read_timer <= 0.0: renji_reads = 0
 	if kit == "tristaff":
 		zephyr_mode_cooldown = maxf(zephyr_mode_cooldown - dt, 0.0)
 		if zephyr_rhythm_seconds > 0.0:
@@ -599,6 +622,13 @@ func _start_attack(aid: String) -> void:
 	atk_power *= dmg_mult * (RAGE_MULT if rage_t > 0.0 else 1.0) * status_runtime.outgoing_multiplier()
 	atk_id = aid
 	atk = attacks[aid].duplicate(true)
+
+	# FRG19I: the third confirmed Read upgrades the next Eightfold finisher.
+	if kit == "tonfa" and aid == "v" and renji_reads >= 3:
+		atk["multi_hit"] = int(atk.get("multi_hit", 8)) + 1
+		atk_power *= 1.20
+		renji_reads = 0
+		renji_read_timer = 0.0
 	if kit == "scythe" and String(atk.get("type", "melee")) == "melee":
 		if nythera_mode == 1: atk_power *= 1.15
 		if not on_ground: atk_power *= 3.0
@@ -806,6 +836,13 @@ func receive_hit(attacker, a: Dictionary, power: float) -> String:
 		return "warded"
 	if ward_t > 0.0: return "warded"
 	if counter_t > 0.0: counter_t = 0.0; return "counter"
+
+	# FRG19I: Iron Reflection replaces held guard with automatic genuine parries.
+	# Unparryable moves still hit normally; normal parry hooks grant the Read.
+	if kit == "tonfa" and renji_reflection_t > 0.0 and not bool(a.get("no_parry", false)):
+		guard = minf(guard + max_guard * 0.10, max_guard)
+		if model != null: model.flash(Color("#d4b0ff"), 0.14)
+		return "parry"
 	var dmg: float = float(a.dmg) * power * status_runtime.incoming_multiplier()
 	# Staff mastery reduces normal damage; SPLIT grip trades guard for speed.
 	if kit == "tristaff": dmg *= 1.08 if zephyr_mode == 1 else 0.90
