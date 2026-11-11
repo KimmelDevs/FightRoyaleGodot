@@ -827,5 +827,43 @@
       "shield": "#2a5953",
       "emblem": "#c8fbe6"
     }
+  },
+  {
+    "id": "zephyr",
+    "title": "Dragon Dancer",
+    "role": "Martial Artist - Three-Section Staff",
+    "desc": "Four staff grips, defensive counters and Dragon Rhythm earned by successful combat contacts.",
+    "stats": {
+      "power": 4,
+      "speed": 4,
+      "range": 3,
+      "defense": 4
+    },
+    "look": {
+      "name": "Zephyr",
+      "body": "m",
+      "vrm": "zephyr",
+      "kit": "tristaff",
+      "element": "dragon",
+      "outfit": "martial",
+      "style": "short",
+      "hat": "none",
+      "hair": "#263f45",
+      "hair_shade": "#76939a",
+      "iris_top": "#1e8c7e",
+      "iris_bottom": "#b6ffe2",
+      "eye_dark": "#113034",
+      "tunic": "#203a43",
+      "band": "#85bba5",
+      "pants": "#19242e",
+      "boots": "#202936",
+      "metal": "#e0e8df",
+      "trim": "#d5be82",
+      "cape": "#274a53",
+      "cape_bottom": "#84c7ae",
+      "glow": "#78eed0",
+      "shield": "#243e48",
+      "emblem": "#e8d9a0"
+    }
   }
 ]

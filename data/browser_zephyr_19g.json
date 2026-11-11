@@ -1,0 +1,26 @@
+{
+  "version": "19G.1",
+  "character": "zephyr",
+  "browser_reference": "https://raw.githubusercontent.com/KimmelDevs/Fight-Royale/main/web/src/game/kits.ts",
+  "status": "FIRST PLAYABLE PORT — browser choreography parity not yet reached",
+  "included": [
+    "five-hit staff light combo",
+    "heavy tail break",
+    "three-hit Serpent Wheel",
+    "Dragon Reversal counter",
+    "five-hit Heavenly Cyclone",
+    "nine-hit Ninefold Dragon",
+    "four F-key grip modes",
+    "Dragon Rhythm 3 stacks (25 seconds)",
+    "3 visibly segmented staff rods with linked joints"
+  ],
+  "pending": [
+    "per-mode authored attack variants",
+    "exact three-section staff physics and two-hand IK",
+    "mode-switch flourish attacks",
+    "mode-specific block and parry tuning",
+    "unique zd* pose animation library",
+    "character-specific AI switching and combo selection",
+    "verified gameplay tests in Godot"
+  ]
+}

@@ -30,6 +30,7 @@ var player: AnimationPlayer
 var motion: MotionLayer
 var vrm: Node3D
 
+var zephyr_sections: Array[Node3D] = [] # FRG19G
 var blade_base: Node3D   ## trail start
 var blade_tip: Node3D    ## trail end / projectile origin
 var cast_point: Node3D
@@ -261,6 +262,37 @@ func _sph(r: float) -> SphereMesh:
 func _pivot(parent: Node3D, pos := Vector3.ZERO) -> Node3D:
 	var n := Node3D.new(); n.position = pos; parent.add_child(n); return n
 
+
+# FRG19G — grip silhouette preview. Real two-handed IK/choreography follows in 19H.
+func set_tristaff_mode(new_mode: int) -> void:
+	if zephyr_sections.size() != 3:
+		return
+	var mode_id: int = posmod(new_mode, 4)
+	for section in zephyr_sections:
+		if is_instance_valid(section):
+			section.rotation = Vector3.ZERO
+			section.scale = Vector3.ONE
+	match mode_id:
+		0: # STAFF: straight three-piece pole
+			for i in range(3): zephyr_sections[i].position = Vector3(0, 0.56 * float(i), 0)
+		1: # SPLIT: both free ends angled away from the central grip
+			zephyr_sections[0].position = Vector3(0, 0, 0)
+			zephyr_sections[1].position = Vector3(0, 0.55, 0)
+			zephyr_sections[2].position = Vector3(0.17, 0.96, 0)
+			zephyr_sections[0].rotation.z = -0.40
+			zephyr_sections[2].rotation.z = 0.68
+		2: # WHIP: extended, flexing outer rod
+			zephyr_sections[0].position = Vector3(0, 0, 0)
+			zephyr_sections[1].position = Vector3(0, 0.55, 0)
+			zephyr_sections[2].position = Vector3(-0.15, 1.04, 0)
+			zephyr_sections[2].rotation.z = -0.72
+		3: # FOLDED: shorter, quicker profile
+			zephyr_sections[0].position = Vector3(0, 0, 0)
+			zephyr_sections[1].position = Vector3(0.085, 0.06, 0)
+			zephyr_sections[2].position = Vector3(-0.085, 0.08, 0)
+			zephyr_sections[1].rotation.z = PI
+			zephyr_sections[2].rotation.z = PI
+
 func _build_weapons() -> void:
 	var L := look
 	var steel := _mat("#eef3ff", true)
@@ -271,6 +303,25 @@ func _build_weapons() -> void:
 	var l: Node3D = WeaponMount.configure_grip(_grip("Left"), mount_profile, "left")
 	match kit:
 
+
+		"tristaff": # FRG19G — visible sanjiekun, three rods and two linked joints
+			var root := _pivot(r, Vector3(0, -0.16, 0))
+			var rod_mat := _mat(L.metal, true)
+			var grip_mat := _mat(L.band)
+			for i in range(3):
+				var section := _pivot(root)
+				_part(section, _cyl(0.024, 0.024, 0.54, 12), rod_mat, Vector3(0, 0.27, 0))
+				_part(section, _cyl(0.029, 0.029, 0.10, 12), grip_mat, Vector3(0, 0.11, 0))
+				_part(section, _cyl(0.029, 0.029, 0.06, 12), trim, Vector3(0, 0.51, 0))
+				if i < 2:
+					for j in range(3):
+						_part(section, _cyl(0.012, 0.012, 0.065, 10), trim, Vector3(0, 0.56 + float(j) * 0.052, 0))
+				zephyr_sections.append(section)
+			set_tristaff_mode(0)
+			blade_base = _pivot(root, Vector3(0, 0.26, 0))
+			blade_tip = _pivot(root, Vector3(0, 1.69, 0))
+			cast_point = blade_tip
+			shield_node = l
 		"hammer": # FRG19D Nesa - giant heart-shaped hammer, attached to right hand
 			var pole := _pivot(r)
 			_part(pole, _cyl(0.025, 0.025, 1.35, 14), _mat(L.band), Vector3(0, 0.49, 0))

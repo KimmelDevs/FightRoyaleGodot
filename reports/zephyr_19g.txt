@@ -1,0 +1,7 @@
+Fight Royale Update 19G — Zephyr Dragon Dancer
+First playable port with 4 grip modes (F), five basic attacks, three special multi-contact attacks, a counter and Rhythm.
+The fighter requires animations/tristaff.tres (installed automatically).
+Add models/zephyr.vrm, then open Godot Editor once to import the VRM.
+F is mapped through Settings > Controls as Switch staff grip.
+Temporary pose source: glaive; bespoke three-section staff IK follows.
+No shop, economy, online, teams or survival changes.

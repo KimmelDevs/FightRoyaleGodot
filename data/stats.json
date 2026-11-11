@@ -86,5 +86,13 @@
     "walk": 2.45,
     "parry": 0.15,
     "jump": 7.0
+  },
+  "tristaff": {
+    "hp": 2670,
+    "guard": 82,
+    "move": 3.9,
+    "walk": 3.05,
+    "parry": 0.205,
+    "jump": 7.9
   }
 }

@@ -395,6 +395,8 @@ func _on_swing(f: Fighter) -> void:
 		match String(a.get("style", "")):
 			"zenith_barrage": _zenith_barrage(f, a)
 			"zenith_arsenal": _zenith_arsenal(f, a); return
+	if f.kit == "tristaff" and String(a.get("type", "")) == "melee":
+		_zephyr_schedule_beats(f, a)
 	match a.type:
 		"projectile": _fire(f, a)
 		"strike": _strike(f, a, f.atk_power)
@@ -538,13 +540,34 @@ func _zenith_arsenal(f: Fighter, a: Dictionary) -> void:
 			if rnd == _round and is_instance_valid(f) and not f.is_down():
 				_zenith_spear_projectile(f, finisher, angle, 23.0))
 
+
+# FRG19G — independently timed, defendable strikes (no guaranteed damage).
+func _zephyr_schedule_beats(f: Fighter, a: Dictionary) -> void:
+	var count: int = int(a.get("multi_hit", 1))
+	if count <= 1 or not f.active_melee():
+		return
+	var serial: int = f.swing_serial
+	var round_id: int = _round
+	var span: float = float(a.get("active", 0.0)) * f.attack_time_multiplier()
+	for beat in range(1, count):
+		var wait_time: float = span * float(beat) / float(count)
+		later(wait_time, func():
+			_zephyr_beat(f, a, serial, round_id, beat))
+
+func _zephyr_beat(f: Fighter, a: Dictionary, serial: int, round_id: int, beat: int) -> void:
+	if round_over or _round != round_id or not is_instance_valid(f) or f.is_down():
+		return
+	if f.swing_serial != serial or not f.active_melee():
+		return
+	_melee(f, a, beat)
+
 func _active_melee_contact(f: Fighter) -> void:
 	_melee(f, f.atk)
 
-func _melee(f: Fighter, a: Dictionary) -> void:
+func _melee(f: Fighter, a: Dictionary, beat: int = 0) -> void:
 	if not f.active_melee():
 		return
-	var contact_key := "%d:%d" % [f.id, f.swing_serial]
+	var contact_key := "%d:%d:%d" % [f.id, f.swing_serial, beat]
 	var landed: Dictionary = _melee_hits.get(contact_key, {})
 	var fwd := f.forward()
 	for d in enemies_of(f):
@@ -568,7 +591,7 @@ func _melee(f: Fighter, a: Dictionary) -> void:
 			f.last_melee_contact_serial = f.swing_serial
 			d.last_melee_contact_serial = d.swing_serial
 			_melee_hits[contact_key] = landed
-			var other_key := "%d:%d" % [d.id, d.swing_serial]
+			var other_key := "%d:%d:0" % [d.id, d.swing_serial]
 			var other_landed: Dictionary = _melee_hits.get(other_key, {})
 			other_landed[f.id] = true
 			_melee_hits[other_key] = other_landed
