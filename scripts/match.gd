@@ -1056,6 +1056,14 @@ func _impact(a: Dictionary, pos: Vector3, color: Color, radius: float) -> void:
 func _buff(f: Fighter, a: Dictionary) -> void:
 	var pvp: bool = cfg.mode != "survival"
 	match a.mode:
+		"aster_judgment": # FRG19K — temporary damage and sword speed transformation
+			if f.kit == "knight" and String(f.look.get("element", "")) == "light":
+				f.aster_judgment_t = float(a.get("duration", 10.0))
+				if f.model != null and f.model.shield_node != null:
+					f.model.shield_node.visible = false
+				f.model.flash(Color("#fff6bd"), 0.5)
+				fx.ring(f.position, Color("#ffe59c"), 2.4, 0.5, 0.8)
+				fx.number(f.chest() + Vector3(0, 0.6, 0), "JUDGMENT", Color("#fff0b4"), 1.2)
 
 
 		"gravity_well":

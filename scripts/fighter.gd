@@ -81,6 +81,8 @@ var guard_fatigue := 0
 # FRG19D Nesa's V skill: successful counter produces a strong heart finisher.
 
 # FRG19E — Roxy's four shield charges and frost-shard freeze buildup.
+# FRG19K — Aster-only 10-second Judgment state.
+var aster_judgment_t := 0.0
 var roxy_aegis_charges := 0
 var roxy_aegis_t := 0.0
 var roxy_frost_stacks := 0
@@ -303,6 +305,10 @@ func status_summary() -> String:
 		if veyr_frenzy_t > 0.0: label += " · FRENZY %.1fs" % veyr_frenzy_t
 		if veyr_festival_t > 0.0: label += " · FESTIVAL %.1fs" % veyr_festival_t
 		return label if summary.is_empty() else label + ", " + summary
+	# FRG19K: show the remaining Judgment time in both match HUDs.
+	if kit == "knight" and String(look.get("element", "")) == "light" and aster_judgment_t > 0.0:
+		var aster_tag: String = "JUDGMENT %.1fs" % aster_judgment_t
+		return aster_tag if summary.is_empty() else aster_tag + ", " + summary
 	if kit == "tonfa":
 		var tag: String = "READ x%d" % renji_reads
 		if renji_reflection_t > 0.0: tag += " · REFLECT %.1fs" % renji_reflection_t
@@ -411,6 +417,15 @@ func tick(dt: float) -> void:
 			veyr_bloodlust = 0.0
 			veyr_frenzy_t = 5.0
 		lifesteal = 0.12 if veyr_festival_t > 0.0 else (0.08 if veyr_frenzy_t > 0.0 else 0.0)
+	# FRG19K: Judgment belongs to the light knight only. Its timer
+	# advances during the actual match simulation, not during pause.
+	if kit == "knight" and String(look.get("element", "")) == "light":
+		var was_judging: bool = aster_judgment_t > 0.0
+		aster_judgment_t = maxf(0.0, aster_judgment_t - dt)
+		if aster_judgment_t > 0.0 and state == S.BLOCK:
+			hp = maxf(1.0, hp - max_hp * 0.006 * dt)
+		if was_judging and aster_judgment_t <= 0.0 and model != null and model.shield_node != null:
+			model.shield_node.visible = true
 	# FRG19I reflection decays in match-time; cannot block manually while active.
 	if kit == "tonfa":
 		renji_reflection_t = maxf(0.0, renji_reflection_t - dt)
@@ -499,7 +514,8 @@ func attack_time_multiplier() -> float:
 	var dragon_mode_speed: float = [1.0, 1.20, 0.94, 1.50][zephyr_mode] if kit == "tristaff" else 1.0
 	var dragon_rhythm_speed: float = 1.0 + 0.20 * float(zephyr_rhythm_stacks) if kit == "tristaff" else 1.0
 	var veyr_frenzy_speed: float = 1.25 if kit == "sickle" and veyr_frenzy_t > 0.0 else 1.0
-	return (1.0 / maxf(1.0 - 0.02 * float(guard_fatigue), 0.5)) * status_runtime.attack_time_multiplier() / veyr_frenzy_speed / (factor * metal_factor * dragon_mode_speed * dragon_rhythm_speed) * (1.0 + 0.05 * float(nythera_orbit_marks)) / (1.0 + 0.10 * float(nythera_dread_stacks))
+	var aster_sword_speed: float = 1.5 if kit == "knight" and String(look.get("element", "")) == "light" and aster_judgment_t > 0.0 and (atk_id.begins_with("l") or atk_id in ["heavy", "x"]) else 1.0
+	return (1.0 / maxf(1.0 - 0.02 * float(guard_fatigue), 0.5)) * status_runtime.attack_time_multiplier() / veyr_frenzy_speed / (factor * metal_factor * dragon_mode_speed * dragon_rhythm_speed * aster_sword_speed) * (1.0 + 0.05 * float(nythera_orbit_marks)) / (1.0 + 0.10 * float(nythera_dread_stacks))
 
 ## True throughout the *entire* damaging window, not just on the first active frame.
 func active_melee() -> bool:
@@ -658,6 +674,15 @@ func _start_attack(aid: String) -> void:
 	atk_power *= dmg_mult * (RAGE_MULT if rage_t > 0.0 else 1.0) * status_runtime.outgoing_multiplier()
 	atk_id = aid
 	atk = attacks[aid].duplicate(true)
+	# FRG19K: the sword, not the shield bash, gains Judgment power.
+	if kit == "knight" and String(look.get("element", "")) == "light" and aster_judgment_t > 0.0:
+		if aid.begins_with("l") or aid in ["heavy", "x", "c"]:
+			var missing: float = clampf(1.0 - hp / maxf(max_hp, 1.0), 0.0, 1.0)
+			atk_power *= 1.20 + missing * 0.30
+			if aid.begins_with("l") or aid == "heavy":
+				atk["apply_status"] = "weaken"
+				atk["status_duration"] = 50.0
+				atk["status_stacks"] = 1
 
 	# FRG19J: festival empowers LIGHTS only; no free Frenzy on cast.
 	if kit == "sickle" and aid.begins_with("l"):

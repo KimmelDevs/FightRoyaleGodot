@@ -1,0 +1,20 @@
+{
+  "version": "19K.1",
+  "character": "aster",
+  "status": "PLAYABLE REFINEMENT — COMBAT ANIMATION PARITY PENDING",
+  "source": "https://raw.githubusercontent.com/KimmelDevs/Fight-Royale/main/web/src/game/kits.ts",
+  "scope": [
+    "light knight only; existing fighter id",
+    "X forward low sweep, no jump",
+    "X/C hit applies Weaken for 50 seconds, maximum three stacks",
+    "V Judgment, 10 seconds, 16-second cooldown",
+    "sword-only 1.5x speed and conditional Weaken",
+    "shield hidden during stance and restored afterward",
+    "missing HP power scaling; small health drain while blocking"
+  ],
+  "pending": [
+    "unique Godot animation for low sweep, raise and sword fusion",
+    "precise browser balance and VFX parity",
+    "in-engine testing"
+  ]
+}

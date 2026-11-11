@@ -1,0 +1,7 @@
+19K — Aster, Azure Knight
+X now performs a grounded low forward sweep rather than launching into the air.
+X and C apply 50-second Weaken, capped at three stacks per earlier user balance choice.
+V Judgment is a 10-second transformation, with faster sword attacks and missing-HP damage scaling.
+Shield geometry is hidden during the stance and restored automatically.
+Aster shares no modified moves with Vesper. Full choreography is a later refinement.
+Godot engine runtime validation has not been performed.
