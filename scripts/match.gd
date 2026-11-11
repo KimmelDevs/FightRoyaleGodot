@@ -1346,7 +1346,12 @@ func apply_hit(attacker, d: Fighter, a: Dictionary, power: float, hit_pos: Vecto
 		if approach.length_squared() > 0.01 and d.in_move.length_squared() > 0.01 and d.in_move.normalized().dot(approach.normalized()) > 0.25:
 			incoming_attack = a.duplicate(true)
 			incoming_attack["_garrick_resolve_defense"] = true
-	var result := d.receive_hit(attacker, incoming_attack, power)
+	# FRG19Q — Phantom Rush stacks increase only projectile/area SKILL damage.
+	# Basic light and charged attacks NEVER receive the bonus.
+	var delivered_power: float = power
+	if attacker is Fighter and attacker.kit == "assassin" and String(a.get("id", "")) in ["z", "x", "c", "v"] and String(a.get("type", "")) in ["projectile", "strike", "lob"]:
+		delivered_power *= 1.0 + float(attacker.nyx_ambush_stacks) * 0.02
+	var result := d.receive_hit(attacker, incoming_attack, delivered_power)
 
 	# FRG19E: four landed frost shards freeze, with a brief re-freeze cooldown.
 	if attacker is Fighter and String(attacker.look.get("element", "")) == "frost" and String(a.get("style", "")) == "frost_shard" and result in ["hit", "crit", "ko"]:
@@ -1370,6 +1375,9 @@ func apply_hit(attacker, d: Fighter, a: Dictionary, power: float, hit_pos: Vecto
 			d.add_status("root", 1, 1.4)
 			fx.ring(hit_pos, Color(attacker.look.glow), 1.6, 0.30, 0.9)
 	if result in ["hit", "crit", "ko"]:
+		# FRG19Q — ONLY an actual Phantom Rush contact earns +2% ranged power.
+		if attacker is Fighter and attacker.kit == "assassin" and String(a.get("id", "")) == "c":
+			attacker.nyx_ambush_stacks += 1
 		d.notify_passive_event("received_hit", attacker if attacker is Fighter else null)
 		if attacker is Fighter:
 			attacker.notify_passive_event("landed_hit", d)

@@ -1,0 +1,19 @@
+{
+  "version": "19Q.1",
+  "character": "nyx",
+  "state": "FIRST PLAYABLE REFINEMENT",
+  "source": "https://raw.githubusercontent.com/KimmelDevs/Fight-Royale/main/web/src/game/kits.ts",
+  "completed": [
+    "Existing Nyx dual-dagger four-light chain and Smoke Step, Shuriken Fan, Phantom Rush retained",
+    "Two aerial dagger strikes per jump, individual swing/contact tracking and air steering",
+    "Phantom Rush landed hit grants one permanent round-local Ambush stack",
+    "Each Ambush stack grants +2% damage to ranged skills only; never basic/charged melee",
+    "Venom Fan applies 4s poison on genuinely damaging hits",
+    "Ambush value shown beside Nyx's status bar; resets each match",
+    "Existing assassin animation library, model fallback and other fighters preserved"
+  ],
+  "pending": [
+    "Unique airborne dagger poses",
+    "VRM alignment, complete Godot engine playtest"
+  ]
+}

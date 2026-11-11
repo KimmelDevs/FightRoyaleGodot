@@ -1,0 +1,5 @@
+19Q — Nyx / Shadow Blade
+Two separate aerial dagger slashes per jump; input buffering and air steering.
+Phantom Rush (C) real contact = one Ambush stack; +2% ranged skill power per stack.
+Venom Fan = 5 poisoned shurikens; 4s poison on landed hits.
+Other fighter kits and gameplay modes unchanged. Godot engine runtime unverified.
