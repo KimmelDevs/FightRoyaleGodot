@@ -751,5 +751,43 @@
       "shield": "#6f5361",
       "emblem": "#ffd5ea"
     }
+  },
+  {
+    "id": "roxy",
+    "title": "Snow Puppet Master",
+    "role": "Mage - Ice Puppeteer",
+    "desc": "Ice shield, freezing snow marionette, frost shards, and an icy meteor.",
+    "stats": {
+      "power": 4,
+      "speed": 3,
+      "range": 5,
+      "defense": 3
+    },
+    "look": {
+      "name": "Roxy",
+      "body": "f",
+      "vrm": "roxy",
+      "kit": "mage",
+      "element": "frost",
+      "outfit": "mage",
+      "style": "long",
+      "hat": "witch",
+      "hair": "#e6f5ff",
+      "hair_shade": "#8abfe2",
+      "iris_top": "#3276af",
+      "iris_bottom": "#b4efff",
+      "eye_dark": "#163c6a",
+      "tunic": "#244b86",
+      "band": "#e6f8ff",
+      "pants": "#d8eefa",
+      "boots": "#25365d",
+      "metal": "#bedce7",
+      "trim": "#e4faff",
+      "cape": "#85bce1",
+      "cape_bottom": "#e9fcff",
+      "glow": "#9cddff",
+      "shield": "#9cddff",
+      "emblem": "#e8f8ff"
+    }
   }
 ]

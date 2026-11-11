@@ -106,6 +106,8 @@ func _saved_loadout(index: int) -> Array:
 			return ["z", "x", "c"]
 	if out[0] == out[1] or out[0] == out[2] or out[1] == out[2]:
 		return ["z", "x", "c"]
+	if Data.character(index).id == "roxy" and out.has("v"):
+		return ["z", "x", "c"]
 	return out
 
 func show_menu() -> void:
@@ -257,9 +259,10 @@ func _skill_picker(parent: Node, side: int) -> void:
 	for slot in 3:
 		var options := OptionButton.new()
 		options.custom_minimum_size = Vector2(188, 40)
-		for key in ["z", "x", "c", "v"]:
+		var possible_keys: Array = ["z", "x", "c"] if fighter.id == "roxy" else ["z", "x", "c", "v"]
+		for key in possible_keys:
 			options.add_item("%s: %s" % [key.to_upper(), attacks[key].name])
-		options.select(["z", "x", "c", "v"].find(arr[slot]))
+		options.select(maxi(0, possible_keys.find(arr[slot])))
 		options.item_selected.connect(_skill_changed.bind(side, slot))
 		row.add_child(options)
 
@@ -271,7 +274,7 @@ func show_prepare() -> void:
 	_title(v, "Match Setup  ·  " + MODES[_mode], 38)
 	var a := "You" if _mode == "duel" else "CPU A"
 	_text(v, "%s: %s    VS    CPU B: %s" % [a, Data.character(_char_a).look.name, Data.character(_char_b).look.name], 23, Color.WHITE)
-	_text(v, "Pick three skills per fighter. The fourth skill is freely available to equip.", 15)
+	_text(v, "Pick three skills per fighter. Some fighters offer a fourth skill.", 15)
 	_skill_picker(v, 0)
 	_skill_picker(v, 1)
 	if _mode == "duel":

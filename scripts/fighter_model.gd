@@ -344,15 +344,30 @@ func _build_weapons() -> void:
 				_part(r, _box(0.032, 0.34, 0.008), steel, Vector3(0.004 * i * i, 0.3 + i * 0.32, 0), Vector3(0, 0, -0.025 * i))
 			blade_base = _pivot(r, Vector3(0, 0.35, 0)); blade_tip = _pivot(r, Vector3(0.02, 1.12, 0))
 			shield_node = _pivot(r, Vector3(0, 0.5, 0))
+
 		"mage":
-			var s := _pivot(r, Vector3(0, -0.25, 0))
-			_part(s, _cyl(0.016, 0.016, 1.5), _mat(L.tunic), Vector3(0, 0.45, 0))
-			_part(s, _cyl(0.034, 0.016, 0.08), trim, Vector3(0, 1.22, 0))
-			var orb := _pivot(s, Vector3(0, 1.32, 0))
-			_part(orb, _sph(0.07), _glow(L.glow))
-			_part(orb, TorusMesh.new(), trim, Vector3.ZERO, Vector3(PI / 2, 0, 0), Vector3.ONE * 0.11)
-			blade_base = _pivot(s, Vector3(0, 0.9, 0)); blade_tip = orb; cast_point = orb
-			shield_node = _pivot(l)
+			if String(L.get("element", "")) == "frost":
+				# FRG19E — Roxy's compact floating spellbook instead of a staff.
+				var book := _pivot(l, Vector3(-0.16, 0.13, -0.18))
+				_part(book, _box(0.30, 0.06, 0.23), _mat(L.metal), Vector3(0, 0, 0))
+				_part(book, _box(0.27, 0.065, 0.20), _mat(L.tunic), Vector3(0, 0.032, 0))
+				_part(book, _box(0.024, 0.069, 0.23), trim, Vector3(0, 0.03, 0))
+				_part(book, _sph(0.04), glow, Vector3(-0.09, 0.09, 0.025))
+				var crystal := _pivot(r, Vector3(0.0, 0.17, 0.0))
+				_part(crystal, _sph(0.075), glow, Vector3(0, 0.07, 0))
+				blade_base = crystal
+				blade_tip = _pivot(crystal, Vector3(0, 0.22, 0))
+				cast_point = blade_tip
+				shield_node = _pivot(l)
+			else:
+				var s := _pivot(r, Vector3(0, -0.25, 0))
+				_part(s, _cyl(0.016, 0.016, 1.5), _mat(L.tunic), Vector3(0, 0.45, 0))
+				_part(s, _cyl(0.034, 0.016, 0.08), trim, Vector3(0, 1.22, 0))
+				var orb := _pivot(s, Vector3(0, 1.32, 0))
+				_part(orb, _sph(0.07), _glow(L.glow))
+				_part(orb, TorusMesh.new(), trim, Vector3.ZERO, Vector3(PI / 2, 0, 0), Vector3.ONE * 0.11)
+				blade_base = _pivot(s, Vector3(0, 0.9, 0)); blade_tip = orb; cast_point = orb
+				shield_node = _pivot(l)
 		"bow":
 			_part(l, _cyl(0.022, 0.022, 0.12), _mat("#5a3a2a"))
 			for sgn in [1.0, -1.0]:

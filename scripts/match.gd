@@ -33,6 +33,9 @@ var _round := 0
 var _timers: Array = []         # [time, Callable]
 var _projectiles: Array = []    # dictionaries
 var _strike_marks: Array = []   # {target, land, id}
+
+# FRG19E — snow puppets live only for their current round.
+var _roxy_puppets: Array[Dictionary] = []
 var _trails: Dictionary = {}    # Fighter -> Trail
 var _frg19b_multi_phase: Dictionary = {}
 var _melee_hits: Dictionary = {}  # FRG07 - persistent melee contact and directional knockback
@@ -138,6 +141,10 @@ func start_round() -> void:
 			p.node.queue_free()
 	for f in fighters: f.queue_free()
 	for t in _trails.values(): t.queue_free()
+	for puppet in _roxy_puppets:
+		if is_instance_valid(puppet["node"]):
+			puppet["node"].queue_free()
+	_roxy_puppets.clear()
 	fighters.clear(); _trails.clear(); _melee_hits.clear(); _frg19b_multi_phase.clear(); _projectiles.clear(); _strike_marks.clear(); _timers.clear()
 	_duel_seconds_left = float(cfg.get("round_seconds", 120))
 	_duel_clock_running = false
@@ -334,6 +341,7 @@ func _process(real_dt: float) -> void:
 			_trails[f].emitting = f.trail_on()
 			_trails[f].tick(dt)
 	_update_projectiles(dt)
+	_roxy_step_puppets(dt)
 	_blade_light(dt)
 	_update_camera(real_dt)
 
@@ -387,8 +395,74 @@ func _on_swing(f: Fighter) -> void:
 		"projectile": _fire(f, a)
 		"strike": _strike(f, a, f.atk_power)
 		"buff": _buff(f, a)
+		"snow_puppet": _roxy_spawn_puppet(f, a)
 		"blink": _blink(f, a)
 		_: _melee(f, a)
+
+
+# FRG19E — real moving snow-puppet summon, not a fake projectile or a strike.
+func _roxy_spawn_puppet(f: Fighter, a: Dictionary) -> void:
+	if f.is_down() or f.opponent == null or f.opponent.is_down():
+		return
+	var puppet := Node3D.new()
+	puppet.name = "RoxyFrostMarionette19E"
+	add_child(puppet)
+	puppet.global_position = f.global_position + f.forward() * 0.85 + Vector3(0.0, 0.28, 0.0)
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color("#bbebff")
+	mat.roughness = 0.35
+	var body := MeshInstance3D.new()
+	var body_mesh := SphereMesh.new()
+	body_mesh.radius = 0.30
+	body_mesh.height = 0.60
+	body.mesh = body_mesh
+	body.material_override = mat
+	puppet.add_child(body)
+	var head := MeshInstance3D.new()
+	var head_mesh := SphereMesh.new()
+	head_mesh.radius = 0.21
+	head_mesh.height = 0.42
+	head.mesh = head_mesh
+	head.material_override = mat
+	head.position = Vector3(0.0, 0.38, 0.0)
+	puppet.add_child(head)
+	var orb := MeshInstance3D.new()
+	var orb_mesh := SphereMesh.new()
+	orb_mesh.radius = 0.07
+	orb_mesh.height = 0.14
+	orb.mesh = orb_mesh
+	orb.material_override = Fx.unlit(Color("#ecffff"))
+	orb.position = Vector3(0.0, 0.67, 0.0)
+	puppet.add_child(orb)
+	_roxy_puppets.append({"node": puppet, "caster": f, "target": f.opponent, "atk": a.duplicate(true), "power": f.atk_power, "life": float(a.get("duration", 8.5)), "speed": float(a.get("speed", 4.5))})
+	fx.flash(puppet.global_position, Color("#a6edff"), 0.4, 0.20, 0.75)
+
+func _roxy_step_puppets(dt: float) -> void:
+	if dt <= 0.0 or round_over:
+		return
+	for record in _roxy_puppets.duplicate():
+		var puppet: Node3D = record["node"]
+		var caster: Fighter = record["caster"]
+		var target: Fighter = record["target"]
+		record["life"] = float(record["life"]) - dt
+		if not is_instance_valid(puppet) or not is_instance_valid(caster) or not is_instance_valid(target) or caster.is_down() or target.is_down() or float(record["life"]) <= 0.0:
+			if is_instance_valid(puppet):
+				puppet.queue_free()
+			_roxy_puppets.erase(record)
+			continue
+		var delta_to: Vector3 = target.position - puppet.global_position
+		delta_to.y = 0.0
+		var distance := delta_to.length()
+		if distance > 0.01:
+			puppet.global_position += delta_to.normalized() * minf(float(record["speed"]) * dt, distance)
+		puppet.rotation.y += dt * 2.3
+		if distance <= float(record["atk"].get("radius", 0.9)) + target.radius:
+			var hit: Dictionary = record["atk"]
+			var direction := delta_to.normalized() if distance > 0.01 else caster.forward()
+			apply_hit(caster, target, hit, float(record["power"]), target.chest(), direction, true)
+			fx.ring(puppet.global_position, Color("#b7f2ff"), 1.0, 0.32, 0.85)
+			puppet.queue_free()
+			_roxy_puppets.erase(record)
 
 func _active_melee_contact(f: Fighter) -> void:
 	_melee(f, f.atk)
@@ -775,6 +849,13 @@ func _impact(a: Dictionary, pos: Vector3, color: Color, radius: float) -> void:
 func _buff(f: Fighter, a: Dictionary) -> void:
 	var pvp: bool = cfg.mode != "survival"
 	match a.mode:
+
+		"frost_aegis":
+			# FRG19E: four charges for a maximum of seven seconds (no stacking).
+			f.roxy_aegis_charges = 4
+			f.roxy_aegis_t = float(a.get("duration", 7.0))
+			fx.ring(f.position, Color("#a7efff"), 1.5, 0.38, 0.85)
+			fx.number(f.chest() + Vector3(0, 0.8, 0), "SNOWGLASS x4", Color("#e1faff"), 1.0)
 		"ward":
 			f.ward_t = minf(float(a.duration), 2.0) if pvp else float(a.duration)
 			fx.number(f.chest() + Vector3(0, 0.9, 0), "WARD", Color("#8fe6ff"), 0.9)
@@ -811,6 +892,15 @@ func _blink(f: Fighter, a: Dictionary) -> void:
 
 func apply_hit(attacker, d: Fighter, a: Dictionary, power: float, hit_pos: Vector3, dir: Vector3, ranged: bool) -> void:
 	var result := d.receive_hit(attacker, a, power)
+
+	# FRG19E: four landed frost shards freeze, with a brief re-freeze cooldown.
+	if attacker is Fighter and String(attacker.look.get("element", "")) == "frost" and String(a.get("style", "")) == "frost_shard" and result in ["hit", "crit", "ko"]:
+		attacker.roxy_frost_stacks = mini(attacker.roxy_frost_stacks + 1, 4)
+		if attacker.roxy_frost_stacks >= 4 and attacker.roxy_freeze_cd <= 0.0 and not d.is_down():
+			if d.add_status("freeze", 1, 2.0):
+				fx.number(d.chest() + Vector3(0, 0.65, 0), "FROZEN!", Color("#a8eeff"), 1.1)
+				attacker.roxy_frost_stacks = 0
+				attacker.roxy_freeze_cd = 4.0
 
 	# FRG19C: confirmed contacts only. Blocks, parries, clashes and invulnerable
 	# enemies cannot be chain-bound. The victim's existing CC rules do the locking.

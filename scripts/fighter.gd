@@ -79,6 +79,12 @@ var guard := 100.0
 var guard_fatigue := 0
 
 # FRG19D Nesa's V skill: successful counter produces a strong heart finisher.
+
+# FRG19E — Roxy's four shield charges and frost-shard freeze buildup.
+var roxy_aegis_charges := 0
+var roxy_aegis_t := 0.0
+var roxy_frost_stacks := 0
+var roxy_freeze_cd := 0.0
 var nesa_counter_pending := false
 var nesa_counter_slot := ""
 var nesa_counter_max_cd := 0.0
@@ -303,6 +309,13 @@ func tick(dt: float) -> void:
 	_dodge_t = maxf(_dodge_t - dt, 0.0)
 	_dodge_cd = maxf(_dodge_cd - dt, 0.0)
 	ward_t = maxf(ward_t - dt, 0.0)
+
+	# FRG19E - only in-game simulation time advances these timers.
+	if roxy_aegis_t > 0.0:
+		roxy_aegis_t = maxf(0.0, roxy_aegis_t - dt)
+		if roxy_aegis_t <= 0.0:
+			roxy_aegis_charges = 0
+	roxy_freeze_cd = maxf(0.0, roxy_freeze_cd - dt)
 	rage_t = maxf(rage_t - dt, 0.0)
 	counter_t = maxf(counter_t - dt, 0.0)
 
@@ -697,6 +710,12 @@ func push_back(speed: float) -> void:
 func receive_hit(attacker, a: Dictionary, power: float) -> String:
 	if state == S.KO: return "none"
 	if invuln_t > 0.0: return "miss"
+
+	# FRG19E - each genuine incoming hit consumes exactly one snowglass crystal.
+	if String(look.get("element", "")) == "frost" and roxy_aegis_t > 0.0 and roxy_aegis_charges > 0:
+		roxy_aegis_charges -= 1
+		model.flash(Color("#baf3ff"), 0.17)
+		return "warded"
 	if ward_t > 0.0: return "warded"
 	if counter_t > 0.0: counter_t = 0.0; return "counter"
 	var dmg: float = float(a.dmg) * power * status_runtime.incoming_multiplier()

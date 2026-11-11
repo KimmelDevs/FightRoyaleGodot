@@ -1,0 +1,9 @@
+Update 19E — Roxy Snow Puppet Master
+Requires 19D.
+Godot imports models/roxy.vrm automatically when opening the project in editor mode.
+Frost basic / charged; Z Snowglass Aegis; X moving freezing snow puppet; C Glacier Meteor.
+Three browser skills: no fictitious V slot in Roxy character picker.
+Aegis absorbs up to four damaging hits for seven seconds, no accumulating charges.
+Freeze trigger: four successful frost-shard hits (not blocks); cooldown four seconds.
+First playable port. Bespoke puppet animation and visible orbiting crystals will follow.
+No shop/survival/online/mode changes.

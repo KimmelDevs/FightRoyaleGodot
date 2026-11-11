@@ -1,0 +1,27 @@
+{
+  "update": "19E.1",
+  "fighter": "roxy",
+  "browser_source": "https://raw.githubusercontent.com/KimmelDevs/Fight-Royale/main/web/src/game/kits.ts",
+  "status": "FIRST PLAYABLE PASS, not full browser parity",
+  "browser_skills": [
+    "Snowglass Aegis",
+    "Frost Marionette",
+    "Glacier Meteor"
+  ],
+  "implemented": [
+    "3-step frost-shard basic combo",
+    "4-way charged shards",
+    "Aegis 4-hit absorb / 7s",
+    "moving freezing snow puppet",
+    "Glacier Meteor with slow",
+    "4 frost shard hits freeze with cooldown",
+    "floating spellbook"
+  ],
+  "refinements_remaining": [
+    "bespoke puppet locomotion / collision",
+    "four visible orbiting Aegis crystals",
+    "2-second post-thaw slow",
+    "unique full-body snow summoning choreography",
+    "battle-tested AI and effects"
+  ]
+}
