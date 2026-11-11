@@ -38,6 +38,8 @@ var _strike_marks: Array = []   # {target, land, id}
 var _roxy_puppets: Array[Dictionary] = []
 # FRG19N — Ember ground patches are fully owned by the match and reset per round.
 var _ember_patches: Array[Dictionary] = []
+# FRG19P — team-aware healing pools, cleared each round.
+var _marina_pools: Array[Dictionary] = []
 var _trails: Dictionary = {}    # Fighter -> Trail
 var _frg19b_multi_phase: Dictionary = {}
 var _melee_hits: Dictionary = {}  # FRG07 - persistent melee contact and directional knockback
@@ -150,6 +152,9 @@ func start_round() -> void:
 	for ember_patch in _ember_patches:
 		if is_instance_valid(ember_patch["node"]): ember_patch["node"].queue_free()
 	_ember_patches.clear()
+	for water_pool in _marina_pools:
+		if is_instance_valid(water_pool["node"]): water_pool["node"].queue_free()
+	_marina_pools.clear()
 	fighters.clear(); _trails.clear(); _melee_hits.clear(); _frg19b_multi_phase.clear(); _projectiles.clear(); _strike_marks.clear(); _timers.clear()
 	_duel_seconds_left = float(cfg.get("round_seconds", 120))
 	_duel_clock_running = false
@@ -352,6 +357,7 @@ func _process(real_dt: float) -> void:
 	_update_projectiles(dt)
 	_roxy_step_puppets(dt)
 	_ember_step_patches(dt) # FRG19N: no burning-ground ticks during pause
+	_marina_step_pools(dt) # FRG19P: heal only while simulation advances
 	_nythera_step_wells(dt)
 	_veyr_step_festivals(dt)
 	_blade_light(dt)
@@ -420,6 +426,56 @@ func _on_swing(f: Fighter) -> void:
 		"blink": _blink(f, a)
 		_: _melee(f, a)
 
+
+# FRG19P — Healing Water is a real area, not an instant self-heal.
+func _marina_spawn_pool(caster: Fighter, attack: Dictionary) -> void:
+    if not is_instance_valid(caster) or caster.is_down() or round_over: return
+    var radius: float = float(attack.get("radius", 2.6))
+    var marker := MeshInstance3D.new()
+    var mesh := CylinderMesh.new()
+    mesh.top_radius = 1.0
+    mesh.bottom_radius = 1.0
+    mesh.height = 0.02
+    marker.mesh = mesh
+    marker.material_override = Fx.unlit(Color("#5fbde2"), 0.30, true)
+    marker.scale = Vector3(radius, 1.0, radius)
+    add_child(marker)
+    marker.global_position = Vector3(caster.position.x, 0.05, caster.position.z)
+    _marina_pools.append({"node": marker, "owner": caster, "team": caster.team,
+        "center": Vector3(caster.position.x, 0.0, caster.position.z),
+        "radius": radius, "seconds": float(attack.get("duration", 5.0)),
+        "pulse": 0.0, "healed": {}})
+    fx.ring(caster.position, Color("#9aeaff"), radius, 0.40, 0.75)
+    fx.number(caster.chest() + Vector3(0, 0.8, 0), "HEALING WATER", Color("#a8ffff"), 0.85)
+
+func _marina_step_pools(dt: float) -> void:
+    if dt <= 0.0 or round_over: return
+    for pool in _marina_pools.duplicate():
+        var owner: Fighter = pool["owner"]
+        pool["seconds"] = float(pool["seconds"]) - dt
+        if not is_instance_valid(owner) or owner.is_down():
+            pool["seconds"] = 0.0
+        if float(pool["seconds"]) <= 0.0:
+            if is_instance_valid(pool["node"]): pool["node"].queue_free()
+            _marina_pools.erase(pool)
+            continue
+        pool["pulse"] = float(pool["pulse"]) + dt
+        if float(pool["pulse"]) < 0.6: continue
+        pool["pulse"] = float(pool["pulse"]) - 0.6
+        for ally in fighters:
+            if ally.team != int(pool["team"]) or ally.is_down(): continue
+            var delta: Vector3 = ally.position - pool["center"]
+            delta.y = 0.0
+            if delta.length() > float(pool["radius"]) + ally.radius * 0.2: continue
+            var ledger: Dictionary = pool["healed"]
+            var key: String = str(ally.id)
+            var pulses: int = int(ledger.get(key, 0))
+            if pulses >= 8: continue # eight pulses * 3.5% = 28% per fighter.
+            ledger[key] = pulses + 1
+            var amount: float = ally.max_hp * 0.035
+            ally.heal(amount)
+            fx.motes(ally.position + Vector3(0.0, 0.55, 0.0), Color("#89f6ef"), 4)
+            fx.number(ally.chest() + Vector3(0.0, 0.35, 0.0), "+%d" % int(amount), Color("#a8ffe9"), 0.55)
 
 # FRG19N — Ember ground fire: four max per caster, 20 seconds each.
 func _ember_add_patch(caster: Fighter, at: Vector3, radius: float) -> void:
@@ -1180,6 +1236,13 @@ func _impact(a: Dictionary, pos: Vector3, color: Color, radius: float) -> void:
 func _buff(f: Fighter, a: Dictionary) -> void:
 	var pvp: bool = cfg.mode != "survival"
 	match a.mode:
+		"marina_bubble": # FRG19P: HP damage mitigation, not the old invincible ward.
+			f.marina_bubble_t = float(a.get("duration", 5.0))
+			fx.ring(f.position, Color("#73d8ff"), 1.6, 0.30, 0.8)
+			fx.number(f.chest() + Vector3(0, 0.8, 0), "BUBBLE WARD", Color("#a5efff"), 0.8)
+		"healing_water":
+			if f.kit == "mage" and String(f.look.get("element", "")) == "water":
+				_marina_spawn_pool(f, a)
 		"ember_ignition": # FRG19N: consume owned ground fire and an active burn
 			_ember_absolute_combustion(f, a)
 		"aster_judgment": # FRG19K — temporary damage and sword speed transformation

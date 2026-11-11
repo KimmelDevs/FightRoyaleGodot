@@ -1,0 +1,18 @@
+{
+  "version": "19P.1",
+  "character": "marina",
+  "state": "FIRST PLAYABLE REFINEMENT",
+  "source": "https://raw.githubusercontent.com/KimmelDevs/Fight-Royale/main/web/src/game/kits.ts",
+  "changes": [
+    "Bubble Ward: 5s, 50% incoming HP damage reduction, 17s cooldown; guard unchanged",
+    "Healing Water: visible pool at cast point, 5s lifetime, radius 2.6",
+    "Healing Water pulses every 0.6s for 3.5% max HP; eight-pulse 28% cap",
+    "Pool allies/owner only, range checks each pulse, no healing outside it",
+    "Tidal Ring and Ocean Requiem apply 3s slow on successful damaging contact",
+    "Preserve original projectile attacks, mage animation library, other mages and fighter IDs"
+  ],
+  "pending": [
+    "Godot VRM visual alignment and gameplay testing",
+    "water-specific particle effects and pose polish"
+  ]
+}

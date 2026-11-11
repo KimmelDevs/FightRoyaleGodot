@@ -162,6 +162,8 @@ var atk_lock := 0.0
 var on_ground := true
 var vel_y := 0.0
 var ward_t := 0.0
+# FRG19P — Marina's Bubble Ward mitigates HP damage, never makes her immune.
+var marina_bubble_t := 0.0
 var counter_t := 0.0
 var invuln_t := 0.0
 var rage_t := 0.0
@@ -350,6 +352,10 @@ func status_summary() -> String:
 	if kit == "katana":
 		var bloom: String = "COUNTER BLOOM %d/4" % kaede_counter_bloom
 		return bloom if summary.is_empty() else bloom + ", " + summary
+	# FRG19P — separate Marina bubble timer visible in both game modes.
+	if kit == "mage" and String(look.get("element", "")) == "water" and marina_bubble_t > 0.0:
+		var bubble_tag: String = "BUBBLE %.1fs · 50%% HP DMG" % marina_bubble_t
+		return bubble_tag if summary.is_empty() else bubble_tag + ", " + summary
 	if kit == "mage" and String(look.get("element", "")) == "fire":
 		var fire_tag: String = "FIRE PATCHES %d" % ember_ground_patches
 		return fire_tag if summary.is_empty() else fire_tag + ", " + summary
@@ -441,6 +447,7 @@ func tick(dt: float) -> void:
 	_dodge_t = maxf(_dodge_t - dt, 0.0)
 	_dodge_cd = maxf(_dodge_cd - dt, 0.0)
 	ward_t = maxf(ward_t - dt, 0.0)
+	marina_bubble_t = maxf(marina_bubble_t - dt, 0.0) # FRG19P
 
 	# FRG19E - only in-game simulation time advances these timers.
 	if roxy_aegis_t > 0.0:
@@ -989,6 +996,9 @@ func receive_hit(attacker, a: Dictionary, power: float) -> String:
 		if model != null: model.flash(Color("#d4b0ff"), 0.14)
 		return "parry"
 	var dmg: float = float(a.dmg) * power * status_runtime.incoming_multiplier()
+	# FRG19P: halve HP damage before guard-break chip calculation, not guard loss.
+	if kit == "mage" and String(look.get("element", "")) == "water" and marina_bubble_t > 0.0:
+		dmg *= 0.5
 	# FRG19L: 25% less projectile HP damage when advancing with 2+ Resolve.
 	# The metadata is set by Match only for real projectile hits; guard cost remains unchanged.
 	if kit == "greatsword" and bool(a.get("_garrick_resolve_defense", false)):

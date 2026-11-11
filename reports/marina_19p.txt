@@ -1,0 +1,6 @@
+19P — Marina / Water Mage
+Z Bubble Ward: 5s, 50% incoming HP damage, does not block KO, 17s cooldown.
+V Healing Water: 5s water pool, radius 2.6, 3.5% maximum HP every 0.6s, maximum 28%.
+X Tidal Ring and C Ocean Requiem: slow for 3s on a real hit.
+VRM assets and other characters preserved.
+Python static tests do not replace Godot engine playtesting.
