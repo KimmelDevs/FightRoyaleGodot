@@ -1,0 +1,13 @@
+Fight Royale Godot — Update 16E: Animation Lab Viewport Inspector
+
+In Animation Lab:
+- Right mouse drag: orbit the preview camera around the fighter
+- Mouse wheel: zoom in/out within safe limits
+- Front/Side/Back: rotate the preview model
+- Reset View: restore the default camera and model orientation
+- Joints toggle: show/hide selectable humanoid bone markers
+- Names toggle: show/hide bone names beside their markers
+- Left mouse click a joint to select it for editing with X/Y/Z sliders
+
+This update does NOT edit a saved pose, modify a rig or VRM, or change combat timing.
+It requires Update 16D. Open Godot once after installation to import scripts.

@@ -42,6 +42,16 @@ var _frg16d_label: Label
 var _frg16d_play_button: Button
 var _frg16d_loop_button: Button
 var _frg16d_speed_select: OptionButton
+# FRG16E - animation lab viewport inspector
+var _frg16e_orbit_yaw := 0.0
+var _frg16e_orbit_pitch := 8.0
+var _frg16e_distance := 4.2
+var _frg16e_target := Vector3(0.0, 1.12, 0.0)
+var _frg16e_dragging := false
+var _frg16e_markers_visible := true
+var _frg16e_labels_visible := false
+var _frg16e_markers_button: Button
+var _frg16e_labels_button: Button
 # FRG16C - animation lab pose tools
 # FRG16C: temporary history in the editor; only Save Fighter writes to disk.
 const FRG16C_HISTORY_LIMIT := 48
@@ -198,7 +208,7 @@ func _build_ui() -> void:
 	_camera.position = Vector3(0.0, 1.25, 4.2)
 	_world.add_child(_camera)
 	_camera.make_current()
-	_camera.look_at(Vector3(0, 1.1, 0), Vector3.UP)
+	_frg16e_update_camera()
 	var light := DirectionalLight3D.new()
 	light.rotation_degrees = Vector3(-45, 28, 0)
 	light.light_energy = 1.0
@@ -228,6 +238,12 @@ func _build_ui() -> void:
 	_button(tools, "Front", func(): _yaw = 0.0)
 	_button(tools, "Side", func(): _yaw = 90.0)
 	_button(tools, "Back", func(): _yaw = 180.0)
+	_button(tools, "Reset View", _frg16e_reset_view)
+	var inspector_tools := HBoxContainer.new()
+	right.add_child(inspector_tools)
+	_frg16e_markers_button = _button(inspector_tools, "Joints: ON", _frg16e_toggle_markers)
+	_frg16e_labels_button = _button(inspector_tools, "Names: OFF", _frg16e_toggle_names)
+	_style_text(right, "Preview: right-drag to orbit, mouse wheel to zoom, left-click a joint to edit.", 13)
 	# FRG16D: timeline controls are preview-only; no profile writes or undo history.
 	var playback := HBoxContainer.new()
 	right.add_child(playback)
@@ -308,6 +324,15 @@ func _create_marker(role: String) -> void:
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	material.albedo_color = Color("#60d2ff")
 	point.material_override = material
+	var name_label := Label3D.new()
+	name_label.text = role
+	name_label.font_size = 18
+	name_label.pixel_size = 0.0025
+	name_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	name_label.no_depth_test = true
+	name_label.position = Vector3(0.08, 0.035, 0.0)
+	name_label.visible = _frg16e_labels_visible
+	point.add_child(name_label)
 	_world.add_child(point)
 	_marker_nodes[role] = point
 
@@ -568,14 +593,67 @@ func _frg16d_sync_ui() -> void:
 	if is_instance_valid(_frg16d_loop_button):
 		_frg16d_loop_button.text = "Loop: ON" if _frg16d_loop else "Loop: OFF"
 
+# FRG16E: viewport controls never alter FighterModel bones, profiles, or combat timing.
+func _frg16e_update_camera() -> void:
+	if not is_instance_valid(_camera):
+		return
+	var yaw := deg_to_rad(_frg16e_orbit_yaw)
+	var pitch := deg_to_rad(_frg16e_orbit_pitch)
+	var forward := Vector3(sin(yaw) * cos(pitch), sin(pitch), cos(yaw) * cos(pitch))
+	_camera.position = _frg16e_target + forward * _frg16e_distance
+	_camera.look_at(_frg16e_target, Vector3.UP)
+
+func _frg16e_reset_view() -> void:
+	_frg16e_dragging = false
+	_frg16e_orbit_yaw = 0.0
+	_frg16e_orbit_pitch = 8.0
+	_frg16e_distance = 4.2
+	_frg16e_update_camera()
+	_yaw = 18.0
+
+func _frg16e_toggle_markers() -> void:
+	_frg16e_markers_visible = not _frg16e_markers_visible
+	if is_instance_valid(_frg16e_markers_button):
+		_frg16e_markers_button.text = "Joints: ON" if _frg16e_markers_visible else "Joints: OFF"
+
+func _frg16e_toggle_names() -> void:
+	_frg16e_labels_visible = not _frg16e_labels_visible
+	if is_instance_valid(_frg16e_labels_button):
+		_frg16e_labels_button.text = "Names: ON" if _frg16e_labels_visible else "Names: OFF"
+
 func _back() -> void:
 	get_tree().change_scene_to_file("res://scenes/main.tscn")
 
 func _viewport_input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion:
+		if not _frg16e_dragging:
+			return
+		var motion := event as InputEventMouseMotion
+		_frg16e_orbit_yaw -= motion.relative.x * 0.38
+		_frg16e_orbit_pitch = clampf(_frg16e_orbit_pitch - motion.relative.y * 0.28, -45.0, 65.0)
+		_frg16e_update_camera()
+		accept_event()
+		return
 	if not (event is InputEventMouseButton):
 		return
 	var click := event as InputEventMouseButton
-	if not click.pressed or click.button_index != MOUSE_BUTTON_LEFT:
+	if click.button_index == MOUSE_BUTTON_RIGHT:
+		_frg16e_dragging = click.pressed
+		accept_event()
+		return
+	if not click.pressed:
+		return
+	if click.button_index == MOUSE_BUTTON_WHEEL_UP:
+		_frg16e_distance = clampf(_frg16e_distance * 0.90, 1.3, 12.0)
+		_frg16e_update_camera()
+		accept_event()
+		return
+	if click.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+		_frg16e_distance = clampf(_frg16e_distance * 1.10, 1.3, 12.0)
+		_frg16e_update_camera()
+		accept_event()
+		return
+	if click.button_index != MOUSE_BUTTON_LEFT or not _frg16e_markers_visible:
 		return
 	if _model == null or _model.skeleton == null:
 		return
@@ -584,10 +662,10 @@ func _viewport_input(event: InputEvent) -> void:
 	var chosen := ""
 	for role in _marker_nodes:
 		var node: MeshInstance3D = _marker_nodes[role]
-		if not node.visible:
+		if not node.visible or _camera.is_position_behind(node.global_position):
 			continue
 		var pixel: Vector2 = _camera.unproject_position(node.global_position) * ratio
-		var dist: float = pixel.distance_to(event.position)
+		var dist: float = pixel.distance_to(click.position)
 		if dist < nearest:
 			nearest = dist
 			chosen = role
@@ -648,10 +726,13 @@ func _process(dt: float) -> void:
 		var marker: MeshInstance3D = _marker_nodes[role]
 		var name: String = RIG.name_for(_model.skeleton, String(role), _model.rig_profile)
 		var bone_id := _model.skeleton.find_bone(name)
-		marker.visible = bone_id >= 0
+		marker.visible = bone_id >= 0 and _frg16e_markers_visible
 		if bone_id < 0:
 			continue
 		marker.global_position = _model.skeleton.global_transform * _model.skeleton.get_bone_global_pose(bone_id).origin
+		var name_label := marker.get_child(0) as Label3D
+		if is_instance_valid(name_label):
+			name_label.visible = _frg16e_labels_visible
 		var material: StandardMaterial3D = marker.material_override
 		material.albedo_color = Color("#ffda72") if role == _selected_bone else Color("#60d2ff")
 
