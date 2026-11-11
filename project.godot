@@ -19,6 +19,7 @@ config/features=PackedStringArray("4.7", "GL Compatibility")
 Data="*res://scripts/data.gd"
 Keys="*res://scripts/keys.gd"
 Profile="*res://scripts/profile.gd"
+AudioSettings="*res://scripts/audio_settings.gd"
 
 [display]
 

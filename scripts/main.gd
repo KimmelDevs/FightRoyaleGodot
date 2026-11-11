@@ -81,6 +81,14 @@ func _btn(parent: Node, value: String, action: Callable, width: float = 240.0) -
 	button.text = value
 	button.custom_minimum_size = Vector2(width, 43)
 	button.add_theme_font_size_override("font_size", 18)
+	# FRG18B: audio persists even as this menu is replaced.
+	button.pressed.connect(func():
+		var cue := "ui_select"
+		if value.begins_with("Back"):
+			cue = "ui_back"
+		elif value == "START FIGHT":
+			cue = "ui_start"
+		AudioSettings.play_ui(cue))
 	if action.is_valid():
 		button.pressed.connect(action)
 	parent.add_child(button)
@@ -359,7 +367,8 @@ func _end_match() -> void:
 
 func show_settings() -> void:
 	var v := _screen()
-	_title(v, "Settings — Controls")
+	_title(v, "Settings — Controls & Audio")
+	_audio_settings_section(v)
 	_text(v, "Click a slot, then press a key or mouse button. Esc and R are reserved.", 16)
 	var scroller := ScrollContainer.new()
 	scroller.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -377,6 +386,31 @@ func show_settings() -> void:
 	v.add_child(nav)
 	_btn(nav, "Back", show_menu, 160)
 	_btn(nav, "Reset Defaults", func(): Keys.reset(); show_settings(), 200)
+
+# FRG18B - UI sounds and persistent audio levels
+func _set_audio_level(percent: float, channel: String) -> void:
+    AudioSettings.set_level(channel, percent / 100.0)
+
+func _audio_settings_section(parent: VBoxContainer) -> void:
+    _title(parent, "Audio", 24)
+    var audio_grid := GridContainer.new()
+    audio_grid.columns = 2
+    audio_grid.add_theme_constant_override("h_separation", 20)
+    audio_grid.add_theme_constant_override("v_separation", 5)
+    parent.add_child(audio_grid)
+    for item in [["master", "Master"], ["combat", "Combat SFX"], ["clashes", "Parries / Clashes"], ["ui", "Menu Sounds"], ["music", "Music (future)"]]:
+        var channel: String = String(item[0])
+        _text(audio_grid, String(item[1]), 16)
+        var slider := HSlider.new()
+        slider.custom_minimum_size = Vector2(360, 23)
+        slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+        slider.min_value = 0.0
+        slider.max_value = 100.0
+        slider.step = 1.0
+        slider.value = AudioSettings.get_level(channel) * 100.0
+        slider.value_changed.connect(_set_audio_level.bind(channel))
+        audio_grid.add_child(slider)
+    _text(parent, "Changes apply instantly and are saved automatically.", 13)
 
 func _begin_rebind(action: String, slot: int, button: Button) -> void:
 	_rebinding = [action, slot]

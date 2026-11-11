@@ -1,0 +1,11 @@
+Fight Royale — Update 18B UI Audio and Volume Settings
+Master / Combat / Parries & Clashes / UI / Music (future) sliders appear in Settings.
+Audio volume persists in user://fight_royale_audio.cfg.
+Separate FRG_SFX, FRG_CLASH, FRG_UI, FRG_MUSIC buses are created at runtime.
+Menu buttons play UI cues; missing files are silently skipped.
+Music bus is ready, but no music playback is added in this release.
+UI SFX files present: 9/9
+  ui_select: 3 candidate file(s)
+  ui_back: 2 candidate file(s)
+  ui_start: 2 candidate file(s)
+  ui_confirm: 2 candidate file(s)

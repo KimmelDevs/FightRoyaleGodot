@@ -1,5 +1,6 @@
 # FRG18A - Combat sound engine. Safe if SFX are not yet imported.
 class_name CombatAudio
+# FRG18B - UI sounds and persistent audio levels
 extends Node3D
 
 const CONFIG_PATH := "res://data/audio_events_18a.json"
@@ -61,6 +62,7 @@ func play_event(event_name: String, world_position: Vector3 = Vector3.ZERO, spat
 		add_child(player)
 		player.global_position = world_position
 		player.stream = stream
+		player.bus = "FRG_CLASH" if event_name in ["clash", "parry", "guard_break", "projectile_clash"] else "FRG_SFX"
 		player.volume_db = volume
 		player.unit_size = 5.0
 		player.max_distance = 34.0
@@ -72,6 +74,7 @@ func play_event(event_name: String, world_position: Vector3 = Vector3.ZERO, spat
 		var player := AudioStreamPlayer.new()
 		add_child(player)
 		player.stream = stream
+		player.bus = "FRG_SFX"
 		player.volume_db = volume
 		player.finished.connect(player.queue_free)
 		_active.append(player)
