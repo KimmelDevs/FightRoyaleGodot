@@ -706,7 +706,11 @@ func _strike(f: Fighter, a: Dictionary, power: float) -> void:
 	var one := func(i: int, self_ref: Callable) -> void:
 		if rnd != _round or f.is_down(): return
 		var src = f if a.at == "self" or f.opponent == null else f.opponent
+
 		var center: Vector3 = src.position; center.y = 0
+		# FRG19D: Nesa C advances the three heart impacts away from her.
+		if String(a.get("style", "")) == "nesa_heart_slam" and f.kit == "hammer":
+			center += f.forward() * (1.05 + float(i) * 0.75)
 		var wait: float = float(a.delay) if i == 0 else float(a.interval)
 		var mark := {"target": f.opponent, "land": _time + wait, "id": _next_id}
 		_next_id += 1
@@ -715,7 +719,10 @@ func _strike(f: Fighter, a: Dictionary, power: float) -> void:
 		later(wait, func():
 			_strike_marks.erase(mark)
 			if rnd != _round: return
+
 			var at: Vector3 = Vector3(f.position.x, 0, f.position.z) if a.at == "self" else center
+			if String(a.get("style", "")) == "nesa_heart_slam" and f.kit == "hammer":
+				at = center
 			_impact(a, at, color, float(a.radius))
 			for d in enemies_of(f):
 				var to: Vector3 = d.position - at; to.y = 0
@@ -741,6 +748,12 @@ func _impact(a: Dictionary, pos: Vector3, color: Color, radius: float) -> void:
 			fx.ring(g, color, radius * 1.3, 0.35, 0.9)
 			fx.sparks(g + Vector3(0, 0.2, 0), Color("#d8c8a8"), 40, 7.0, Vector3.UP)
 			add_trauma(0.65 if a.style == "cleave" else 0.45)
+
+		"nesa_heart_slam", "nesa_giant_heart": # FRG19D heart hammer hit treatment
+			fx.rocks(g, 20 if a.style == "nesa_heart_slam" else 34, 1.5)
+			fx.ring(g, Color("#ff95c1"), radius * 1.3, 0.38, 0.94)
+			fx.flash(g + Vector3(0, 0.7, 0), Color("#ffe1f0"), radius * 0.60, 0.18, 0.88)
+			add_trauma(0.55 if a.style == "nesa_heart_slam" else 0.82)
 		"spin":
 			fx.ring(g + Vector3(0, 1.0, 0), color, radius, 0.2, 0.9)
 		_:
@@ -776,6 +789,13 @@ func _buff(f: Fighter, a: Dictionary) -> void:
 			fx.number(f.chest() + Vector3(0, 0.9, 0), "BERSERK", Color("#ff8a50"), 1.0)
 		"counter":
 			f.counter_t = float(a.duration)
+
+		"nesa_high_striker": # FRG19D Nesa V, only valid incoming hits trigger the giant riposte
+			f.counter_t = 0.55
+			f.nesa_counter_pending = true
+			f.nesa_counter_slot = f.atk_id
+			f.nesa_counter_max_cd = float(a.get("cd", 26.0)) * f.cd_mult
+			fx.number(f.chest() + Vector3(0, 0.9, 0), "HEART COUNTER", Color("#ffd5e5"), 0.8)
 			fx.number(f.chest() + Vector3(0, 0.9, 0), "COUNTER STANCE", Color("#ffd1da"), 0.7)
 
 func _blink(f: Fighter, a: Dictionary) -> void:
@@ -853,12 +873,32 @@ func apply_hit(attacker, d: Fighter, a: Dictionary, power: float, hit_pos: Vecto
 			fx.combat_guard(shield_pos, dir, true)
 			fx.number(shield_pos + Vector3(0, 0.5, 0), "PARRY!", Color("#8fe6ff"), 1.4)
 			add_trauma(0.4); hit_stop(0.35)
+
 		"counter":
-			fx.number(d.chest() + Vector3(0, 0.6, 0), "COUNTER!", Color("#ff9aa8"), 1.4)
-			if attacker:
-				var counter: Dictionary = d.attacks.heavy.duplicate()
-				counter.dmg = 180; counter.heavy = true; counter.stun = 0.8
-				apply_hit(d, attacker, counter, d.dmg_mult, attacker.chest(), -dir, false)
+			if d.kit == "hammer" and d.nesa_counter_pending:
+				# An actual successful counter, not an unconditional giant attack.
+				d.nesa_counter_pending = false
+				d.nesa_counter_slot = ""
+				fx.number(d.chest() + Vector3(0, 0.6, 0), "HEARTBREAKER!", Color("#ffd5e5"), 1.4)
+				var boom := d.attacks.heavy.duplicate(true)
+				boom["type"] = "strike"
+				boom["style"] = "nesa_giant_heart"
+				boom["at"] = "self"
+				boom["dmg"] = 580
+				boom["guard"] = 90
+				boom["knock"] = 12.5
+				boom["stun"] = 1.0
+				boom["heavy"] = true
+				boom["radius"] = 3.5
+				boom["delay"] = 0.05
+				boom["repeat"] = 1
+				_strike(d, boom, d.dmg_mult)
+			else:
+				fx.number(d.chest() + Vector3(0, 0.6, 0), "COUNTER!", Color("#ff9aa8"), 1.4)
+				if attacker:
+					var counter: Dictionary = d.attacks.heavy.duplicate()
+					counter.dmg = 180; counter.heavy = true; counter.stun = 0.8
+					apply_hit(d, attacker, counter, d.dmg_mult, attacker.chest(), -dir, false)
 		"guard_break":
 			audio.play_event("guard_break", hit_pos, true, d.get_instance_id())
 			fx.combat_guard_break(hit_pos)

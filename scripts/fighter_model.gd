@@ -271,6 +271,22 @@ func _build_weapons() -> void:
 	var l: Node3D = WeaponMount.configure_grip(_grip("Left"), mount_profile, "left")
 	match kit:
 
+		"hammer": # FRG19D Nesa - giant heart-shaped hammer, attached to right hand
+			var pole := _pivot(r)
+			_part(pole, _cyl(0.025, 0.025, 1.35, 14), _mat(L.band), Vector3(0, 0.49, 0))
+			_part(pole, _cyl(0.038, 0.038, 0.14, 14), trim, Vector3(0, -0.11, 0))
+			var head := _pivot(pole, Vector3(0, 1.22, 0))
+			_part(head, _box(0.76, 0.42, 0.42), _mat(L.metal, true), Vector3(0, 0.05, 0))
+			# Two pink lobes and a diamond-shaped point make a readable heart emblem.
+			_part(head, _sph(0.19), _mat(L.trim), Vector3(-0.17, 0.12, -0.24))
+			_part(head, _sph(0.19), _mat(L.trim), Vector3(0.17, 0.12, -0.24))
+			_part(head, _box(0.31, 0.31, 0.08), _mat(L.tunic), Vector3(0, -0.075, -0.24), Vector3(0, 0, PI / 4))
+			_part(head, _box(0.055, 0.46, 0.10), glow, Vector3(0, 0, -0.28))
+			blade_base = _pivot(pole, Vector3(0, 0.78, 0))
+			blade_tip = _pivot(pole, Vector3(0, 1.46, 0))
+			cast_point = blade_tip
+			shield_node = l
+
 		"chainblade": # FRG19C segmented chainblade, procedural first pass
 			var weapon := _pivot(r)
 			_part(weapon, _cyl(0.022, 0.022, 0.35), _mat(L.pants), Vector3(0, -0.05, 0))

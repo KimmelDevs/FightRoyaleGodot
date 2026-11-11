@@ -78,5 +78,13 @@
     "walk": 2.75,
     "parry": 0.16,
     "jump": 7.0
+  },
+  "hammer": {
+    "hp": 2650,
+    "guard": 110,
+    "move": 3.05,
+    "walk": 2.45,
+    "parry": 0.15,
+    "jump": 7.0
   }
 }

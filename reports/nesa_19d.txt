@@ -1,0 +1,8 @@
+Fight Royale Godot 19D — Nesa first playable port
+Requires 19C. Godot needs to import models/nesa.vrm for the correct model.
+No VRM rig edits are needed. Uses temporary greatsword animation poses.
+Four light attacks + charged spinning hammer + Z/X/C/V (3 equipped at once).
+Pink Heart Smash creates three sequential forward pulses; not full browser charge travel.
+V counter requires a real incoming attack; failed reads refund 40% cooldown.
+Full giant-hammer transformation and bespoke choreography deferred.
+No changes to shop or game modes.

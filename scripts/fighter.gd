@@ -78,6 +78,11 @@ var max_guard := 100.0
 var guard := 100.0
 var guard_fatigue := 0
 
+# FRG19D Nesa's V skill: successful counter produces a strong heart finisher.
+var nesa_counter_pending := false
+var nesa_counter_slot := ""
+var nesa_counter_max_cd := 0.0
+
 # FRG19C Kaizen: target captured by a confirmed Predator's Hook contact.
 var kaizen_bound_target: Fighter = null
 var kaizen_bind_seconds := 0.0
@@ -300,6 +305,13 @@ func tick(dt: float) -> void:
 	ward_t = maxf(ward_t - dt, 0.0)
 	rage_t = maxf(rage_t - dt, 0.0)
 	counter_t = maxf(counter_t - dt, 0.0)
+
+	# FRG19D: grant the stated partial cooldown refund only when V fails to counter.
+	if nesa_counter_pending and counter_t <= 0.0:
+		nesa_counter_pending = false
+		if nesa_counter_slot != "" and cooldowns.has(nesa_counter_slot):
+			cooldowns[nesa_counter_slot] = maxf(0.0, float(cooldowns[nesa_counter_slot]) - nesa_counter_max_cd * 0.40)
+		nesa_counter_slot = ""
 	invuln_t = maxf(invuln_t - dt, 0.0)
 	_read_dash()
 	_read_dodge()
