@@ -1,0 +1,194 @@
+{
+  "version": "18A.1",
+  "sfx_root": "res://sfx",
+  "events": {
+    "swing_light": {
+      "files": [
+        "fight/fast_sword_whoosh.mp3",
+        "fight/sword_blade_swish.mp3",
+        "fight/swift_sword_strike.mp3"
+      ],
+      "volume_db": -8,
+      "cooldown_ms": 75
+    },
+    "swing_heavy": {
+      "files": [
+        "fight/metal_hit_woosh.mp3",
+        "fight/cinematic_whoosh_deep_impact.mp3"
+      ],
+      "volume_db": -5,
+      "cooldown_ms": 125
+    },
+    "swing_fist": {
+      "files": [
+        "fight/punch_through_air.mp3",
+        "fight/quick_hit_through_air.mp3"
+      ],
+      "volume_db": -8,
+      "cooldown_ms": 85
+    },
+    "cast_magic": {
+      "files": [
+        "misc/fast_magic_game_spell.mp3",
+        "misc/arcane_chain_spell.mp3",
+        "bunker/magic_spell_mystery_whoosh.mp3"
+      ],
+      "volume_db": -8,
+      "cooldown_ms": 180
+    },
+    "arrow": {
+      "files": [
+        "fight/arrow_shot_through_air.mp3",
+        "fight/arrow_whizz_in_battle.mp3"
+      ],
+      "volume_db": -8,
+      "cooldown_ms": 95
+    },
+    "hit_light": {
+      "files": [
+        "fight/impact_of_a_blow.mp3",
+        "fight/body_punch_quick_hit.mp3",
+        "fight/weak_hit_impact.mp3"
+      ],
+      "volume_db": -6,
+      "cooldown_ms": 65
+    },
+    "hit_heavy": {
+      "files": [
+        "fight/heavy_sword_hit.mp3",
+        "fight/impact_big.mp3",
+        "fight/hard_and_quick_punch.mp3"
+      ],
+      "volume_db": -4,
+      "cooldown_ms": 105
+    },
+    "block": {
+      "files": [
+        "fight/hitting_metal_armor.mp3",
+        "fight/metal_hammer_hit.mp3"
+      ],
+      "volume_db": -7,
+      "cooldown_ms": 120
+    },
+    "parry": {
+      "files": [
+        "fight/sword_metal_strike.mp3",
+        "fight/metallic_sword_scrape.mp3"
+      ],
+      "volume_db": -2,
+      "cooldown_ms": 160
+    },
+    "clash": {
+      "files": [
+        "fight/heavy_sword_smashes_metal.mp3",
+        "fight/samurai_sword_impact.mp3"
+      ],
+      "volume_db": -3,
+      "cooldown_ms": 130
+    },
+    "guard_break": {
+      "files": [
+        "fight/dramatic_metal_explosion_impact.mp3",
+        "fight/metal_hammer_hit.mp3"
+      ],
+      "volume_db": -3,
+      "cooldown_ms": 230
+    },
+    "dash": {
+      "files": [
+        "fight/fast_air_transition_sweep.mp3",
+        "fight/quick_zoom_impact.mp3"
+      ],
+      "volume_db": -12,
+      "cooldown_ms": 170
+    },
+    "land": {
+      "files": [
+        "fight/boot_stomp_on_mud_surface.mp3",
+        "fight/body_impact_falling_into_the_sand.mp3"
+      ],
+      "volume_db": -11,
+      "cooldown_ms": 160
+    },
+    "explosion": {
+      "files": [
+        "fight/explosion_hit.mp3",
+        "fight/fire_explosion.mp3"
+      ],
+      "volume_db": -5,
+      "cooldown_ms": 240
+    },
+    "lightning": {
+      "files": [
+        "fight/fast_thunder_impact.mp3",
+        "fight/heavy_electric_shockwave_impact.mp3"
+      ],
+      "volume_db": -6,
+      "cooldown_ms": 190
+    },
+    "water": {
+      "files": [
+        "fight/water_drop_splashes_in_cave.mp3",
+        "misc/fairy_water_spell.mp3"
+      ],
+      "volume_db": -8,
+      "cooldown_ms": 200
+    },
+    "ice": {
+      "files": [
+        "misc/icicles_spell_whoosh.mp3",
+        "bunker/dropping_ice_into_a_glass.mp3"
+      ],
+      "volume_db": -7,
+      "cooldown_ms": 170
+    },
+    "fire": {
+      "files": [
+        "fight/fire_explosion.mp3",
+        "misc/explosion_spell.mp3"
+      ],
+      "volume_db": -7,
+      "cooldown_ms": 170
+    },
+    "skill_impact": {
+      "files": [
+        "fight/impact_big.mp3",
+        "fight/strong_close_thunder_explosion.mp3"
+      ],
+      "volume_db": -8,
+      "cooldown_ms": 180
+    },
+    "projectile_clash": {
+      "files": [
+        "fight/metallic_impact_with_whip.mp3",
+        "fight/exciting_fast_hit.mp3"
+      ],
+      "volume_db": -6,
+      "cooldown_ms": 140
+    },
+    "ko": {
+      "files": [
+        "fight/falling_hit.mp3",
+        "fight/impact_heartbeat_deep.mp3"
+      ],
+      "volume_db": -5,
+      "cooldown_ms": 700
+    },
+    "fight_start": {
+      "files": [
+        "game_sports/start_match_countdown.mp3",
+        "fight/introduction_bell_sound.mp3"
+      ],
+      "volume_db": -14,
+      "cooldown_ms": 1000
+    },
+    "victory": {
+      "files": [
+        "game_sports/instant_win.mp3",
+        "game_sports/video_game_win.mp3"
+      ],
+      "volume_db": -11,
+      "cooldown_ms": 1000
+    }
+  }
+}

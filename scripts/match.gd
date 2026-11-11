@@ -2,6 +2,8 @@ class_name Match
 # FRG17C - elemental hit and skill VFX
 # FRG17A - combat impact VFX
 extends Node3D
+# FRG18A - combat sound integration
+const COMBAT_AUDIO_SCRIPT = preload("res://scripts/combat_audio.gd")
 # FRG15A - status and passive runtime
 # FRG08 - defense integration and visible fighter checks
 ## A running match (port of the web game.ts): duel (1v1) and team (2v2-4v4) in the 3D arena.
@@ -17,6 +19,7 @@ var fighters: Array[Fighter] = []
 var local: Fighter
 var camera: Camera3D
 var fx: Fx
+var audio
 var round_over := false
 var can_restart := false
 var paused := false
@@ -69,6 +72,8 @@ func _ready() -> void:
 	_build_world()
 	fx = Fx.new()
 	add_child(fx)
+	audio = COMBAT_AUDIO_SCRIPT.new()
+	add_child(audio)
 	camera = Camera3D.new()
 	camera.fov = 50
 	add_child(camera)
@@ -165,6 +170,7 @@ func _ready_fight(id: int, fs: Array, sub: String) -> void:
 	later(1.0, func():
 		if id != _round: return
 		banner("FIGHT!", Color.WHITE)
+		audio.play_event("fight_start", Vector3.ZERO, false)
 		_duel_clock_running = cfg.mode == "duel"
 		for f in fs: f.brain = _brain_for(f))
 
@@ -195,6 +201,8 @@ func _spawn(slot: Dictionary, team: int, pos: Vector3) -> Fighter:
 	f.swing.connect(_on_swing)
 	f.knocked_out.connect(_on_ko)
 	f.landed.connect(func(x: Fighter): fx.ring(x.global_position, Color.WHITE, 0.8, 0.25, 0.5))
+	f.landed.connect(func(x: Fighter): audio.play_event("land", x.global_position))
+	f.dashed.connect(func(x: Fighter): audio.play_event("dash", x.global_position))
 	f.dashed.connect(func(x: Fighter):
 		fx.smoke(x.global_position, Color(x.look.glow))
 		fx.ring(x.global_position, Color(x.look.glow), 1.2, 0.2, 0.7))
@@ -362,6 +370,17 @@ func now() -> float:
 
 func _on_swing(f: Fighter) -> void:
 	var a := f.atk
+	var audio_type := String(a.get("type", "melee"))
+	var cue := "swing_light"
+	if audio_type == "projectile":
+		cue = "arrow" if f.kit == "bow" else "cast_magic"
+	elif audio_type in ["strike", "buff", "blink"]:
+		cue = "cast_magic"
+	elif f.kit in ["knuckles", "kicks"]:
+		cue = "swing_fist"
+	elif f.atk_id in ["heavy", "l3", "v"]:
+		cue = "swing_heavy"
+	audio.play_event(cue, f.chest())
 	var el: String = f.look.element
 	var big: bool = f.atk_id in ["z", "x", "c", "v", "heavy", "l3"]
 	if el == "earth" and big:
@@ -576,6 +595,7 @@ func _resolve_projectile_duels(dt: float) -> void:
 			fx.sparks(impact, Color("#fff1bd"), 24, 6.0)
 			fx.ring(impact, Color("#f6d78c"), 0.9, 0.20, 0.75)
 			fx.number(impact + Vector3(0.0, 0.3, 0.0), "CLASH!", Color("#ffe6a0"), 0.65)
+			audio.play_event("projectile_clash", impact)
 			claimed[a.id] = true
 			claimed[b.id] = true
 			if a.shooter is Fighter:
@@ -654,6 +674,7 @@ func _update_projectiles(dt: float) -> void:
 				fx.sparks(cut, Color(defender.look.glow), 18, 5.0, -p.vel.normalized())
 				fx.ring(cut, Color("#ffe6a4"), 0.85, 0.2, 0.65)
 				fx.number(cut + Vector3(0, 0.22, 0), "CLASH!", Color("#ffe6a4"), 0.65)
+				audio.play_event("projectile_clash", cut)
 				defender.notify_passive_event("projectile_destroyed", p.shooter if p.shooter is Fighter else null)
 				done = true
 				break
@@ -731,6 +752,17 @@ func _impact(a: Dictionary, pos: Vector3, color: Color, radius: float) -> void:
 			fx.ring(g + Vector3(0, 1.0, 0), color, radius, 0.2, 0.9)
 		_:
 			fx.sparks(pos, color, 14, 5.0)
+	# FRG18A: small selection of per-element and skill-impact sounds.
+	var style_sound := String(a.get("style", ""))
+	var element_sound := String(a.get("element", ""))
+	var cue := "skill_impact"
+	if style_sound in ["explosion", "meteor"]:
+		cue = "explosion"
+	elif style_sound == "lightning" or element_sound == "lightning":
+		cue = "lightning"
+	elif element_sound in ["water", "ice", "fire"]:
+		cue = element_sound
+	audio.play_event(cue, g)
 	# FRG17C: visual-only elemental accent for skill impact events.
 	fx.elemental_skill_17c(g, String(a.get("element", "")), String(a.get("style", "")), color, radius)
 
@@ -788,6 +820,7 @@ func apply_hit(attacker, d: Fighter, a: Dictionary, power: float, hit_pos: Vecto
 	var shield_pos := d.model.shield_node.global_position if d.model.shield_node else hit_pos
 	match result:
 		"hit", "crit", "ko":
+			audio.play_event("hit_heavy" if heavy else "hit_light", hit_pos)
 			var crit := d.last_crit
 			fx.combat_hit(hit_pos, glow, dir, heavy)
 			# FRG17C: cosmetic accent only after a landed hit.
@@ -799,11 +832,13 @@ func apply_hit(attacker, d: Fighter, a: Dictionary, power: float, hit_pos: Vecto
 			add_trauma(0.5 if a.heavy else 0.3 if heavy else 0.18)
 			hit_stop(0.11 if a.heavy else 0.07 if heavy else 0.045)
 		"blocked":
+			audio.play_event("block", shield_pos)
 			if attacker is Fighter: attacker.add_guard_fatigue()
 			fx.combat_guard(shield_pos, dir, false)
 			fx.number(shield_pos + Vector3(0, 0.4, 0), "BLOCK", Color("#c9d3e6"), 0.7)
 			add_trauma(0.14); hit_stop(0.04)
 		"parry":
+			audio.play_event("parry", shield_pos)
 			if attacker is Fighter: attacker.add_guard_fatigue()
 			# Parry delays attacks with hit-stop, not a full stun.
 			fx.combat_guard(shield_pos, dir, true)
@@ -816,6 +851,7 @@ func apply_hit(attacker, d: Fighter, a: Dictionary, power: float, hit_pos: Vecto
 				counter.dmg = 180; counter.heavy = true; counter.stun = 0.8
 				apply_hit(d, attacker, counter, d.dmg_mult, attacker.chest(), -dir, false)
 		"guard_break":
+			audio.play_event("guard_break", hit_pos)
 			fx.combat_guard_break(hit_pos)
 			fx.number(hit_pos + Vector3(0, 0.55, 0), "GUARD BREAK", Color("#ff8a50"), 1.2)
 			add_trauma(0.55); hit_stop(0.12)
@@ -828,6 +864,7 @@ func _clash(a: Fighter, b: Fighter, pos: Vector3) -> void:
 	a.clash_recoil(); b.clash_recoil()
 	a.notify_passive_event("clashed", b)
 	b.notify_passive_event("clashed", a)
+	audio.play_event("clash", pos)
 	fx.combat_clash(pos)
 	fx.number(pos + Vector3(0, 0.45, 0), "CLASH!", Color("#ffe08a"), 1.3)
 	add_trauma(0.45); hit_stop(0.13)
@@ -847,6 +884,7 @@ func _blade_light(dt: float) -> void:
 # --- rounds --------------------------------------------------------------------------------
 
 func _on_ko(f: Fighter) -> void:
+	audio.play_event("ko", f.chest())
 	if cfg.mode == "duel":
 		if round_over:
 			return
@@ -922,6 +960,7 @@ func _finish_duel(winner: Fighter, by_time: bool = false) -> void:
 		var result_color: Color = Color("#d2e7ff") if draw else (Color("#ffe08a") if spectator_mode or player_wins else Color("#ff7b7b"))
 		var detail: String = "Time limit reached" if by_time else "Knockout"
 		ui_event.emit({"type": "over", "text": result_text, "sub": detail + "  |  R to rematch", "color": result_color})
+		audio.play_event("victory", Vector3.ZERO, false)
 		can_restart = true)
 
 # --- camera --------------------------------------------------------------------------------

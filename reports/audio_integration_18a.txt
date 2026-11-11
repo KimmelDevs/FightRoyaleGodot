@@ -1,0 +1,9 @@
+Fight Royale - Update 18A Combat Audio
+SFX folder: C:\Users\Admin\OneDrive\Documents\fight-royale-godot\sfx
+MP3 files present: 2292
+Event-mapped sounds on disk: 47/47
+Event groups: 23
+Sounds are loaded at runtime after Godot imports the MP3 files.
+Missing sounds are skipped without gameplay failures.
+Use audio_events_18a.json to adjust event filenames and levels.
+A future 18B update can add menu UI sounds and audio sliders.
