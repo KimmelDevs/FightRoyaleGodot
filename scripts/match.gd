@@ -343,6 +343,7 @@ func _process(real_dt: float) -> void:
 	_update_projectiles(dt)
 	_roxy_step_puppets(dt)
 	_nythera_step_wells(dt)
+	_veyr_step_festivals(dt)
 	_blade_light(dt)
 	_update_camera(real_dt)
 
@@ -397,6 +398,7 @@ func _on_swing(f: Fighter) -> void:
 			"zenith_barrage": _zenith_barrage(f, a)
 			"zenith_arsenal": _zenith_arsenal(f, a); return
 	if f.kit == "scythe" and String(a.get("type", "")) == "melee": _nythera_schedule_beats(f, a)
+	if f.kit == "sickle" and String(a.get("type", "")) == "melee": _veyr_schedule_beats(f, a)
 	if f.kit == "tonfa" and String(a.get("type", "")) == "melee": _renji_schedule_beats(f, a)
 	if f.kit == "tristaff" and String(a.get("type", "")) == "melee":
 		_zephyr_schedule_beats(f, a)
@@ -580,6 +582,51 @@ func _nythera_step_wells(dt: float) -> void:
 
 # FRG19I — each tonfa beat is separately blockable, parryable, clashable and dodgeable.
 # Never invoke a magical slash; all contacts share ordinary melee collision.
+
+# FRG19J Carrion Sweep: five distinct contact frames; ordinary blocks/parries/clashes.
+func _veyr_schedule_beats(f: Fighter, a: Dictionary) -> void:
+	var count: int = int(a.get("multi_hit", 1))
+	if count <= 1 or not f.active_melee(): return
+	var serial: int = f.swing_serial
+	var round_id: int = _round
+	var span: float = float(a.get("active", 0.0)) * f.attack_time_multiplier()
+	for beat in range(1, count):
+		var wait_time: float = span * float(beat) / float(count)
+		later(wait_time, func(): _veyr_beat(f, a, serial, round_id, beat))
+
+func _veyr_beat(f: Fighter, a: Dictionary, serial: int, round_id: int, beat: int) -> void:
+	if round_over or _round != round_id or not is_instance_valid(f) or f.is_down(): return
+	if f.swing_serial != serial or not f.active_melee(): return
+	_melee(f, a, beat)
+
+# A lightweight, dodgeable scythe perimeter around Veyr. First-port visual
+# approximation, not the browser's final cinematic scythe ring choreography.
+func _veyr_step_festivals(dt: float) -> void:
+	if dt <= 0.0 or round_over: return
+	for f in fighters:
+		if not is_instance_valid(f) or f.is_down() or f.kit != "sickle" or f.veyr_festival_t <= 0.0:
+			continue
+		f.veyr_festival_tick -= dt
+		if f.veyr_festival_tick > 0.0: continue
+		f.veyr_festival_tick = 0.65
+		fx.ring(f.position, Color("#e94468"), 3.5, 0.35, 0.55)
+		for d in enemies_of(f):
+			var delta: Vector3 = d.position - f.position
+			delta.y = 0.0
+			var distance: float = delta.length()
+			if distance < 2.65 or distance > 3.85: continue
+			var rim: Dictionary = f.attacks.l1.duplicate(true)
+			rim["id"] = "festival_rim"
+			rim["dmg"] = 16.0
+			rim["guard"] = 10.0
+			rim["knock"] = 0.0
+			rim["stun"] = 0.12
+			rim["apply_status"] = ""
+			apply_hit(f, d, rim, f.dmg_mult, d.chest(), delta.normalized(), false)
+			if not d.is_down():
+				var pull: Vector3 = -delta.normalized() * 0.25
+				d.position += pull
+
 func _renji_schedule_beats(f: Fighter, a: Dictionary) -> void:
 	var count: int = int(a.get("multi_hit", 1))
 	if count <= 1 or not f.active_melee(): return
@@ -680,6 +727,11 @@ func _projectile_shape(style: String, size: float) -> Mesh:
 			var spear := BoxMesh.new()
 			spear.size = Vector3(0.08, 0.09, 0.78) * size
 			return spear
+
+		"bloodcrescent":
+			var crescent := BoxMesh.new()
+			crescent.size = Vector3(0.46, 0.11, 0.25) * size
+			return crescent
 		"arrow":
 			var arrow := BoxMesh.new()
 			arrow.size = Vector3(0.05, 0.05, 0.70) * size
@@ -1029,6 +1081,21 @@ func _buff(f: Fighter, a: Dictionary) -> void:
 				_strike(f, pulse, f.atk_power)
 
 
+
+		"blood_feint":
+			f.veyr_feint_t = float(a.get("duration", 0.30))
+			f.veyr_feint_counter = false
+			fx.flash(f.chest(), Color("#ff5577"), 0.45, 0.18, 0.8)
+		"blood_festival":
+			f.veyr_festival_t = float(a.get("duration", 8.0))
+			f.veyr_festival_tick = 0.38
+			if f.opponent != null and not f.opponent.is_down():
+				var away: Vector3 = f.position - f.opponent.position
+				away.y = 0.0
+				if away.length_squared() < 0.001: away = Vector3.RIGHT
+				f.teleport(f.opponent.position + away.normalized() * 1.75)
+			fx.ring(f.position, Color("#f34669"), 3.5, 0.4, 0.85)
+			fx.number(f.chest() + Vector3(0, 0.8, 0), "BLOOD FESTIVAL", Color("#ff9daf"), 1.2)
 		"renji_reflection": # FRG19I — no invulnerability to truly unparryable hits
 			f.renji_reflection_t = float(a.get("duration", 15.0))
 			fx.ring(f.position, Color("#bc8cff"), 1.4, 0.3, 0.8)
@@ -1148,7 +1215,18 @@ func apply_hit(attacker, d: Fighter, a: Dictionary, power: float, hit_pos: Vecto
 			add_trauma(0.4); hit_stop(0.35)
 
 		"counter":
-			if d.kit == "hammer" and d.nesa_counter_pending:
+
+			if d.kit == "sickle" and d.veyr_feint_counter:
+				d.veyr_feint_counter = false
+				fx.number(d.chest() + Vector3(0, 0.5, 0), "DEATH FEINT!", Color("#ff849d"), 0.9)
+				if attacker is Fighter and not attacker.is_down():
+					d.teleport(attacker.position - attacker.forward() * 1.3)
+					var riposte: Dictionary = d.attacks.heavy.duplicate(true)
+					riposte["dmg"] = 145.0
+					riposte["knock"] = 2.2
+					riposte["stun"] = 0.40
+					apply_hit(d, attacker, riposte, d.dmg_mult, attacker.chest(), d.forward(), false)
+			elif d.kit == "hammer" and d.nesa_counter_pending:
 				# An actual successful counter, not an unconditional giant attack.
 				d.nesa_counter_pending = false
 				d.nesa_counter_slot = ""

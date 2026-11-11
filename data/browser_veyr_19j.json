@@ -1,0 +1,27 @@
+{
+  "version": "19J.1",
+  "character": "veyr",
+  "browser_sources": [
+    "https://raw.githubusercontent.com/KimmelDevs/Fight-Royale/main/web/src/game/kits.ts",
+    "https://raw.githubusercontent.com/KimmelDevs/Fight-Royale/main/web/src/game/roster.ts"
+  ],
+  "status": "FIRST PLAYABLE PORT — FULL BROWSER VFX, BLOODLUST BALANCE, AND CHOREOGRAPHY STILL PENDING",
+  "implemented": [
+    "dual procedural sickles",
+    "four basic lights and heavy",
+    "three projectile Crimson Execution",
+    "short Death Feint counter",
+    "eight-second Blood Festival perimeter",
+    "stun immunity but normal damage during Festival",
+    "Festival light-damage and guard buffs",
+    "five-hit defendable Carrion Sweep",
+    "landed-hit Bloodlust accumulation, decay and Frenzy",
+    "poison through existing status runtime"
+  ],
+  "pending": [
+    "exact browser sickle choreography",
+    "final cinematic orbiting sickle geometry",
+    "perimeter timing and Bloodlust/Frenzy balance parity",
+    "Godot engine runtime validation"
+  ]
+}

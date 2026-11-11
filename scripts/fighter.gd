@@ -98,6 +98,14 @@ var kaizen_bind_seconds := 0.0
 
 # FRG19I — Renji: Reads only from confirmed parries; reflection only auto-parries
 # attacks the ordinary parry system would allow.
+
+# FRG19J — Veyr's resources are per-fighter and reset when a new Fighter is created.
+var veyr_bloodlust := 0.0
+var veyr_frenzy_t := 0.0
+var veyr_festival_t := 0.0
+var veyr_festival_tick := 0.0
+var veyr_feint_t := 0.0
+var veyr_feint_counter := false
 var renji_reflection_t := 0.0
 var renji_reads := 0
 var renji_read_timer := 0.0
@@ -273,6 +281,10 @@ func notify_passive_event(event_id: String, other: Node = null) -> void:
 	if kit == "glaive" and String(look.get("element", "")) == "storm" and event_id == "projectile_destroyed":
 		zarek_momentum += 1
 
+
+	# FRG19J: bloodlust is only earned on landed damaging attacks, never on cast.
+	if kit == "sickle" and event_id == "landed_hit":
+		veyr_bloodlust = minf(100.0, veyr_bloodlust + 9.0)
 	if kit == "tonfa" and event_id == "parried":
 		renji_reads = mini(3, renji_reads + 1)
 		renji_read_timer = 30.0
@@ -285,6 +297,12 @@ func status_summary() -> String:
 		return "Momentum x%d" % zarek_momentum if summary.is_empty() else "Momentum x%d, %s" % [zarek_momentum, summary]
 	if kit == "glaive" and String(look.get("element", "")) == "metal" and zenith_magnetic_stacks > 0:
 		return "Magnetic x%d" % zenith_magnetic_stacks if summary.is_empty() else "Magnetic x%d, %s" % [zenith_magnetic_stacks, summary]
+
+	if kit == "sickle":
+		var label: String = "BLOODLUST %d%%" % int(veyr_bloodlust)
+		if veyr_frenzy_t > 0.0: label += " · FRENZY %.1fs" % veyr_frenzy_t
+		if veyr_festival_t > 0.0: label += " · FESTIVAL %.1fs" % veyr_festival_t
+		return label if summary.is_empty() else label + ", " + summary
 	if kit == "tonfa":
 		var tag: String = "READ x%d" % renji_reads
 		if renji_reflection_t > 0.0: tag += " · REFLECT %.1fs" % renji_reflection_t
@@ -381,6 +399,18 @@ func tick(dt: float) -> void:
 	roxy_freeze_cd = maxf(0.0, roxy_freeze_cd - dt)
 
 
+
+	# FRG19J: real simulation time; no buffs continue while spectators pause.
+	if kit == "sickle":
+		veyr_festival_t = maxf(0.0, veyr_festival_t - dt)
+		veyr_feint_t = maxf(0.0, veyr_feint_t - dt)
+		veyr_frenzy_t = maxf(0.0, veyr_frenzy_t - dt)
+		if veyr_frenzy_t <= 0.0:
+			veyr_bloodlust = maxf(0.0, veyr_bloodlust - dt * 1.0)
+		if veyr_bloodlust >= 100.0:
+			veyr_bloodlust = 0.0
+			veyr_frenzy_t = 5.0
+		lifesteal = 0.12 if veyr_festival_t > 0.0 else (0.08 if veyr_frenzy_t > 0.0 else 0.0)
 	# FRG19I reflection decays in match-time; cannot block manually while active.
 	if kit == "tonfa":
 		renji_reflection_t = maxf(0.0, renji_reflection_t - dt)
@@ -468,7 +498,8 @@ func attack_time_multiplier() -> float:
 	var metal_factor: float = 1.0 + 0.01 * float(zenith_magnetic_stacks) if kit == "glaive" and String(look.get("element", "")) == "metal" else 1.0
 	var dragon_mode_speed: float = [1.0, 1.20, 0.94, 1.50][zephyr_mode] if kit == "tristaff" else 1.0
 	var dragon_rhythm_speed: float = 1.0 + 0.20 * float(zephyr_rhythm_stacks) if kit == "tristaff" else 1.0
-	return (1.0 / maxf(1.0 - 0.02 * float(guard_fatigue), 0.5)) * status_runtime.attack_time_multiplier() / (factor * metal_factor * dragon_mode_speed * dragon_rhythm_speed) * (1.0 + 0.05 * float(nythera_orbit_marks)) / (1.0 + 0.10 * float(nythera_dread_stacks))
+	var veyr_frenzy_speed: float = 1.25 if kit == "sickle" and veyr_frenzy_t > 0.0 else 1.0
+	return (1.0 / maxf(1.0 - 0.02 * float(guard_fatigue), 0.5)) * status_runtime.attack_time_multiplier() / veyr_frenzy_speed / (factor * metal_factor * dragon_mode_speed * dragon_rhythm_speed) * (1.0 + 0.05 * float(nythera_orbit_marks)) / (1.0 + 0.10 * float(nythera_dread_stacks))
 
 ## True throughout the *entire* damaging window, not just on the first active frame.
 func active_melee() -> bool:
@@ -545,6 +576,11 @@ func _read_jump() -> void:
 		if state == S.BLOCK: _set_state(S.IDLE)
 
 func _read_skill(dt: float) -> void:
+	if kit == "sickle" and veyr_festival_t > 0.0:
+		in_skill = ""
+		_queued_skill = ""
+		_queued_skill_t = 0.0
+		return
 
 	# FRG19C: X recast reels a previously bound enemy to Kaizen (even during X cooldown).
 	if kit == "chainblade" and in_skill == "x" and kaizen_bind_seconds > 0.0 and is_instance_valid(kaizen_bound_target):
@@ -622,6 +658,14 @@ func _start_attack(aid: String) -> void:
 	atk_power *= dmg_mult * (RAGE_MULT if rage_t > 0.0 else 1.0) * status_runtime.outgoing_multiplier()
 	atk_id = aid
 	atk = attacks[aid].duplicate(true)
+
+	# FRG19J: festival empowers LIGHTS only; no free Frenzy on cast.
+	if kit == "sickle" and aid.begins_with("l"):
+		if veyr_festival_t > 0.0:
+			atk_power *= 1.35
+			atk["guard"] = float(atk.get("guard", 0.0)) * 3.0
+		if veyr_frenzy_t > 0.0:
+			atk_power *= 1.15
 
 	# FRG19I: the third confirmed Read upgrades the next Eightfold finisher.
 	if kit == "tonfa" and aid == "v" and renji_reads >= 3:
@@ -837,6 +881,13 @@ func receive_hit(attacker, a: Dictionary, power: float) -> String:
 	if ward_t > 0.0: return "warded"
 	if counter_t > 0.0: counter_t = 0.0; return "counter"
 
+	# FRG19J Death Feint counters only parryable hits; it never prevents
+	# genuinely unblockable attacks or invulnerable misses.
+	if kit == "sickle" and veyr_feint_t > 0.0 and not bool(a.get("no_parry", false)):
+		veyr_feint_t = 0.0
+		veyr_feint_counter = true
+		return "counter"
+
 	# FRG19I: Iron Reflection replaces held guard with automatic genuine parries.
 	# Unparryable moves still hit normally; normal parry hooks grant the Read.
 	if kit == "tonfa" and renji_reflection_t > 0.0 and not bool(a.get("no_parry", false)):
@@ -872,6 +923,10 @@ func receive_hit(attacker, a: Dictionary, power: float) -> String:
 	_apply_knock(attacker, float(a.knock))
 	model.flash()
 	if hp <= 0.0: _ko(); return "ko"
+
+	# Blood Festival grants stun immunity, NOT damage or knockback immunity.
+	if kit == "sickle" and veyr_festival_t > 0.0:
+		return "crit" if last_crit else "hit"
 	# One stun per skill use; repeated stuns within a few seconds get shorter.
 	var src := "%d:%d" % [attacker.id, attacker.swing_serial] if attacker is Fighter else ""
 	var reeling := state == S.HITSTUN or state == S.STAGGER

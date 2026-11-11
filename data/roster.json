@@ -941,5 +941,43 @@
       "shield": "#1B1530",
       "emblem": "#C49BFF"
     }
+  },
+  {
+    "id": "veyr",
+    "title": "Venom Reaper",
+    "role": "Assassin - Dual Sickles",
+    "desc": "Twin sickle rushdown. Bloodlust fills only on damaging hits. Blood Festival summons an orbiting perimeter, blocks special skills, boosts lights and ignores stuns.",
+    "stats": {
+      "power": 4,
+      "speed": 5,
+      "range": 2,
+      "defense": 1
+    },
+    "look": {
+      "name": "Veyr",
+      "body": "m",
+      "vrm": "veyr",
+      "kit": "sickle",
+      "element": "venom",
+      "outfit": "assassin",
+      "style": "short",
+      "hat": "none",
+      "hair": "#2b2429",
+      "hair_shade": "#6c454d",
+      "iris_top": "#ab283d",
+      "iris_bottom": "#f27366",
+      "eye_dark": "#28121e",
+      "tunic": "#372b38",
+      "band": "#7b2a40",
+      "pants": "#211d27",
+      "boots": "#28202a",
+      "metal": "#b9b2bc",
+      "trim": "#c34b56",
+      "cape": "#38252f",
+      "cape_bottom": "#8d2e47",
+      "glow": "#ff465d",
+      "shield": "#572735",
+      "emblem": "#ff465d"
+    }
   }
 ]

@@ -60,6 +60,9 @@ func setup(look_data: Dictionary) -> void:
 	var candidate_ids: Array[String] = []
 	if not requested.is_empty():
 		candidate_ids.append(requested)
+	if requested == "veyr":
+		for alternate in ["gale", "vesper"]:
+			if not candidate_ids.has(alternate): candidate_ids.append(alternate)
 	var standin: String = str(FALLBACK.get(look.get("body", "f"), "ember"))
 	if not candidate_ids.has(standin):
 		candidate_ids.append(standin)
@@ -464,6 +467,21 @@ func _build_weapons() -> void:
 				_part(g, _box(0.04, 0.3, 0.01), steel, Vector3(0, 0.23, 0))
 			blade_base = _pivot(r, Vector3(0, 0.12, 0)); blade_tip = _pivot(r, Vector3(0, 0.42, 0)); shield_node = l
 
+
+		"sickle": # FRG19J — one curved short sickle in EACH hand
+			for grip in [r, l]:
+				var weapon := _pivot(grip, Vector3(0.0, -0.07, 0.02))
+				_part(weapon, _cyl(0.024, 0.026, 0.45, 12), _mat(L.band), Vector3(0, 0.12, 0))
+				_part(weapon, _box(0.14, 0.045, 0.055), trim, Vector3(0, 0.33, 0))
+				var curve := _pivot(weapon, Vector3(0, 0.38, 0))
+				_part(curve, _box(0.24, 0.07, 0.035), steel, Vector3(0.10, 0.05, 0), Vector3(0, 0, 0.28))
+				_part(curve, _box(0.23, 0.065, 0.031), steel, Vector3(0.29, 0.09, 0), Vector3(0, 0, 0.63))
+				_part(curve, _box(0.16, 0.045, 0.027), glow, Vector3(0.42, 0.02, 0), Vector3(0, 0, 1.10))
+				_part(curve, _cyl(0.0, 0.036, 0.13, 10), steel, Vector3(0.48, -0.05, 0), Vector3(0, 0, 1.25))
+			blade_base = _pivot(r, Vector3(0, 0.29, 0))
+			blade_tip = _pivot(r, Vector3(0.48, 0.47, 0))
+			cast_point = blade_tip
+			shield_node = l
 		"tonfa": # FRG19I — one blunt offset-grip tonfa on each forearm (no blades)
 			for grip in [r, l]:
 				var staff := _pivot(grip, Vector3(0.0, -0.11, -0.06))

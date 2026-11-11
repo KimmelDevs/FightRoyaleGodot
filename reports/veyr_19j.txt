@@ -1,0 +1,7 @@
+19J — Veyr / Venom Reaper
+Dual sickles (kit: sickle). Dedicated models/veyr.vrm preferred, then Gale/Vesper stand-ins.
+Z Crimson Execution: 3 blood projectiles. X Death Feint: 0.30s counter.
+C Blood Festival: 8s +35% light dmg, x3 light guard dmg, stun immunity, skill lock.
+V Carrion Sweep: five separate melee collision checks.
+Bloodlust fills on confirmed hits, decays slowly; poison status uses existing rules.
+Full choreography and exact browser balance are refinement work.

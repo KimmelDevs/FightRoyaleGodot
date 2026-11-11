@@ -110,5 +110,13 @@
     "walk": 3.45,
     "parry": 0.21,
     "jump": 8.1
+  },
+  "sickle": {
+    "hp": 1950,
+    "guard": 62,
+    "move": 4.5,
+    "walk": 3.55,
+    "parry": 0.2,
+    "jump": 8.2
   }
 }

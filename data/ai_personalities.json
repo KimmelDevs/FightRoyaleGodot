@@ -192,9 +192,12 @@
       "heavy_scale": 1.36
     },
     "veyr": {
-      "archetype": "katana",
-      "attack_pace": 1.21,
-      "parry_scale": 1.11
+      "archetype": "assassin",
+      "attack_pace": 1.22,
+      "skill_pace": 1.15,
+      "approach_scale": 1.19,
+      "orbit_scale": 1.29,
+      "parry_scale": 1.05
     },
     "renji": {
       "archetype": "knuckles",
