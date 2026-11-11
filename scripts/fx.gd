@@ -153,3 +153,94 @@ func number(pos: Vector3, text: String, color: Color, size := 1.0) -> void:
 func clear() -> void:
 	for it in _items: it[0].queue_free()
 	_items.clear()
+
+# FRG17A - combat impact VFX
+# Cosmetic only: no damage, collisions, hit-stop or combat timings are changed.
+# Each ray burst is one MultiMesh, not a node for each spark.
+func _vfx17a_rays(pos: Vector3, color: Color, direction: Vector3, amount: int, reach: float, duration: float) -> void:
+	var rays := BoxMesh.new()
+	rays.size = Vector3(0.025, 0.025, 1.0)
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.mesh = rays
+	mm.instance_count = amount
+	var node := MultiMeshInstance3D.new()
+	node.multimesh = mm
+	node.material_override = unlit(color, 0.94, true)
+	var orientations: Array[Vector3] = []
+	var distances: Array[float] = []
+	var heading := direction.normalized() if direction.length_squared() > 0.0001 else Vector3.UP
+	for i in range(amount):
+		var jitter := Vector3(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0), randf_range(-1.0, 1.0))
+		var ray := (heading * 0.60 + jitter).normalized()
+		if ray.length_squared() < 0.0001:
+			ray = Vector3.UP
+		orientations.append(ray)
+		distances.append(reach * randf_range(0.65, 1.10))
+	var elapsed := [0.0]
+	_add(node, func(dt: float) -> bool:
+		elapsed[0] += dt
+		var progress: float = clampf(elapsed[0] / maxf(duration, 0.01), 0.0, 1.0)
+		for i in range(amount):
+			var ray: Vector3 = orientations[i]
+			var up: Vector3 = Vector3.UP if absf(ray.dot(Vector3.UP)) < 0.92 else Vector3.FORWARD
+			var basis := Basis.looking_at(ray, up)
+			var visible_length: float = maxf(0.001, distances[i] * 0.28 * (1.0 - progress))
+			var center: Vector3 = pos + ray * (0.1 + distances[i] * progress * 0.60)
+			mm.set_instance_transform(i, Transform3D(basis.scaled(Vector3(1.0, 1.0, visible_length)), center))
+		return elapsed[0] < duration)
+
+# A shield-facing translucent disk; oriented toward the incoming strike.
+func _vfx17a_shield_disk(pos: Vector3, color: Color, incoming: Vector3, radius: float, duration: float) -> void:
+	var disk := MeshInstance3D.new()
+	var sphere := SphereMesh.new()
+	sphere.radius = 1.0
+	sphere.height = 2.0
+	sphere.radial_segments = 20
+	sphere.rings = 8
+	disk.mesh = sphere
+	var mat := unlit(color, 0.38, true)
+	disk.material_override = mat
+	disk.position = pos
+	var normal := incoming.normalized() if incoming.length_squared() > 0.0001 else Vector3.FORWARD
+	var up := Vector3.UP if absf(normal.dot(Vector3.UP)) < 0.92 else Vector3.FORWARD
+	disk.basis = Basis.looking_at(normal, up)
+	var elapsed := [0.0]
+	_add(disk, func(dt: float) -> bool:
+		elapsed[0] += dt
+		var progress: float = clampf(elapsed[0] / maxf(duration, 0.01), 0.0, 1.0)
+		var grow: float = radius * (0.65 + progress * 0.55)
+		disk.scale = Vector3(grow, grow, 0.035)
+		mat.albedo_color.a = 0.38 * (1.0 - progress)
+		return elapsed[0] < duration)
+
+func combat_hit(pos: Vector3, color: Color, normal: Vector3, heavy: bool = false) -> void:
+	var intensity: float = 1.0 if heavy else 0.65
+	flash(pos, Color.WHITE.lerp(color, 0.35), 0.25 + 0.24 * intensity, 0.13, 0.85)
+	sparks(pos, color, 24 if heavy else 13, 7.5 if heavy else 5.0, normal)
+	_vfx17a_rays(pos, color, normal, 14 if heavy else 8, 1.25 if heavy else 0.72, 0.22 if heavy else 0.16)
+	if heavy:
+		ring(pos, color, 1.35, 0.22, 0.65)
+
+func combat_guard(pos: Vector3, incoming: Vector3, perfect: bool = false) -> void:
+	var tint := Color("#a8ecff") if perfect else Color("#ffc971")
+	_vfx17a_shield_disk(pos, tint, incoming, 0.95 if perfect else 0.65, 0.27 if perfect else 0.17)
+	sparks(pos, tint, 31 if perfect else 13, 8.0 if perfect else 4.5, -incoming)
+	_vfx17a_rays(pos, tint, -incoming, 13 if perfect else 6, 0.95 if perfect else 0.48, 0.21 if perfect else 0.14)
+	if perfect:
+		flash(pos, Color("#e4fbff"), 0.40, 0.12, 0.8)
+		ring(pos, tint, 1.5, 0.30, 0.85)
+
+func combat_guard_break(pos: Vector3) -> void:
+	var tint := Color("#ffad49")
+	flash(pos, Color("#fff4c2"), 0.78, 0.17, 0.95)
+	sparks(pos, tint, 36, 8.5)
+	_vfx17a_rays(pos, tint, Vector3.UP, 20, 1.65, 0.27)
+	ring(pos, tint, 1.75, 0.32, 0.84)
+
+func combat_clash(pos: Vector3) -> void:
+	var tint := Color("#ffe5a2")
+	flash(pos, Color.WHITE, 0.75, 0.16, 0.92)
+	sparks(pos, tint, 38, 9.0)
+	_vfx17a_rays(pos, tint, Vector3.UP, 22, 1.55, 0.23)
+	ring(pos, tint, 2.45, 0.35, 0.87)

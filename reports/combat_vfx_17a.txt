@@ -1,0 +1,10 @@
+Fight Royale Godot - Update 17A (Combat Impact VFX)
+
+- Distinctive directional hit streaks for light/heavy attacks.
+- Shield-facing disks for blocks; larger blue pulse for perfect parries.
+- Golden radial burst on clashes; orange shockwave on guard breaks.
+- MultiMesh streak implementation reduces per-burst scene nodes.
+- No gameplay changes: damage, hit-stun, AI, hitboxes, cooldowns unchanged.
+- All visuals use built-in Godot mesh/material types; no imported textures required.
+- Open Godot Editor once to let it parse and import modified scripts.
+- Visual results are not verified by the Python installer; test in both game modes.

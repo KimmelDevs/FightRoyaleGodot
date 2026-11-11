@@ -1,4 +1,5 @@
 class_name Match
+# FRG17A - combat impact VFX
 extends Node3D
 # FRG15A - status and passive runtime
 # FRG08 - defense integration and visible fighter checks
@@ -783,9 +784,7 @@ func apply_hit(attacker, d: Fighter, a: Dictionary, power: float, hit_pos: Vecto
 	match result:
 		"hit", "crit", "ko":
 			var crit := d.last_crit
-			fx.sparks(hit_pos, glow, 30 if heavy else 18, 8.0 if heavy else 6.0, dir)
-			fx.flash(hit_pos, glow, 0.45 if heavy else 0.3, 0.14, 0.8)
-			if a.heavy: fx.ring(hit_pos, glow, 2.2, 0.35, 0.9)
+			fx.combat_hit(hit_pos, glow, dir, heavy)
 			fx.number(hit_pos + Vector3(0, 0.5, 0), "%d%s" % [int(d.last_damage), "!" if crit else ""], Color("#ffb347") if crit else Color.WHITE, 1.5 if crit else 1.0)
 			if attacker is Fighter and attacker.lifesteal > 0: attacker.heal(d.last_damage * attacker.lifesteal)
 			if attacker is Fighter and attacker.look.element == "earth": fx.rocks(d.position, 12 if heavy else 6, 0.9 if heavy else 0.6)
@@ -793,14 +792,13 @@ func apply_hit(attacker, d: Fighter, a: Dictionary, power: float, hit_pos: Vecto
 			hit_stop(0.11 if a.heavy else 0.07 if heavy else 0.045)
 		"blocked":
 			if attacker is Fighter: attacker.add_guard_fatigue()
-			fx.sparks(shield_pos, Color("#ffd27a"), 16, 5.0, -dir + Vector3(0, 0.3, 0))
+			fx.combat_guard(shield_pos, dir, false)
 			fx.number(shield_pos + Vector3(0, 0.4, 0), "BLOCK", Color("#c9d3e6"), 0.7)
 			add_trauma(0.14); hit_stop(0.04)
 		"parry":
 			if attacker is Fighter: attacker.add_guard_fatigue()
 			# Parry delays attacks with hit-stop, not a full stun.
-			fx.sparks(shield_pos, Color("#aee9ff"), 40, 9.0)
-			fx.ring(shield_pos, Color("#b3f2ff"), 1.6, 0.35, 0.9)
+			fx.combat_guard(shield_pos, dir, true)
 			fx.number(shield_pos + Vector3(0, 0.5, 0), "PARRY!", Color("#8fe6ff"), 1.4)
 			add_trauma(0.4); hit_stop(0.35)
 		"counter":
@@ -810,7 +808,7 @@ func apply_hit(attacker, d: Fighter, a: Dictionary, power: float, hit_pos: Vecto
 				counter.dmg = 180; counter.heavy = true; counter.stun = 0.8
 				apply_hit(d, attacker, counter, d.dmg_mult, attacker.chest(), -dir, false)
 		"guard_break":
-			fx.sparks(hit_pos, Color("#ffb347"), 40, 9.0)
+			fx.combat_guard_break(hit_pos)
 			fx.number(hit_pos + Vector3(0, 0.55, 0), "GUARD BREAK", Color("#ff8a50"), 1.2)
 			add_trauma(0.55); hit_stop(0.12)
 		"warded":
@@ -822,8 +820,7 @@ func _clash(a: Fighter, b: Fighter, pos: Vector3) -> void:
 	a.clash_recoil(); b.clash_recoil()
 	a.notify_passive_event("clashed", b)
 	b.notify_passive_event("clashed", a)
-	fx.sparks(pos, Color("#fff2c0"), 50, 10.0)
-	fx.ring(pos, Color("#ffe699"), 3.0, 0.45, 0.9)
+	fx.combat_clash(pos)
 	fx.number(pos + Vector3(0, 0.45, 0), "CLASH!", Color("#ffe08a"), 1.3)
 	add_trauma(0.45); hit_stop(0.13)
 
