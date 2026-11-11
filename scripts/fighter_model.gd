@@ -10,6 +10,10 @@ const FALLBACK := {"m": "rook", "f": "ember"}  ## stand-ins until a fighter has 
 
 var character_id := ""  # canonical fighter ID, not shared kit ID
 var lab_paused := false
+# FRG16D - Animation Lab playback overrides (never set by combat scenes)
+var lab_preview_override := false
+var lab_preview_phase := 0.0
+var lab_preview_time := 0.0
 # FRG16B - combat choreography
 var choreo_state := "idle"
 var choreo_progress := 0.0
@@ -172,9 +176,13 @@ func play_pose(pose_name: String, speed: float) -> void:
 var _hips_target := 0.0
 
 func _process(dt: float) -> void:
-	_t += dt
-	if not lab_paused:
-		_phase += dt * (10.0 + 6.0 * run) * walk
+	if lab_preview_override:
+		_t = lab_preview_time
+		_phase = lab_preview_phase
+	else:
+		_t += dt
+		if not lab_paused:
+			_phase += dt * (10.0 + 6.0 * run) * walk
 	if motion == null: return
 	motion.t = _t
 	motion.walk = walk
@@ -354,3 +362,5 @@ func _heater(w: float, h: float, depth: float) -> Mesh:
 		for v in [Vector3(a.x, depth / 2, -a.y), Vector3(b.x, depth / 2, -b.y), Vector3(b.x, -depth / 2, -b.y), Vector3(a.x, depth / 2, -a.y), Vector3(b.x, -depth / 2, -b.y), Vector3(a.x, -depth / 2, -a.y)]:
 			st.set_normal(n); st.add_vertex(v)
 	return st.commit()
+
+# FRG16D - animation lab preview timeline

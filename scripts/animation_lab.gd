@@ -31,6 +31,17 @@ var _dirty := false
 var _turning := false
 var _yaw := 18.0
 var _gait_running := true
+# FRG16D - animation lab preview timeline
+var _frg16d_elapsed := 0.0
+var _frg16d_duration := 1.10
+var _frg16d_playing := true
+var _frg16d_loop := true
+var _frg16d_speed := 1.0
+var _frg16d_bar: HSlider
+var _frg16d_label: Label
+var _frg16d_play_button: Button
+var _frg16d_loop_button: Button
+var _frg16d_speed_select: OptionButton
 # FRG16C - animation lab pose tools
 # FRG16C: temporary history in the editor; only Save Fighter writes to disk.
 const FRG16C_HISTORY_LIMIT := 48
@@ -217,8 +228,28 @@ func _build_ui() -> void:
 	_button(tools, "Front", func(): _yaw = 0.0)
 	_button(tools, "Side", func(): _yaw = 90.0)
 	_button(tools, "Back", func(): _yaw = 180.0)
-	_button(tools, "Play / Pause Walk", func(): _gait_running = not _gait_running)
-	_style_text(right, "Preview combat states, rotate bones and Save Fighter. Edits also apply in battles.", 13)
+	# FRG16D: timeline controls are preview-only; no profile writes or undo history.
+	var playback := HBoxContainer.new()
+	right.add_child(playback)
+	_frg16d_play_button = _button(playback, "Pause", _frg16d_toggle)
+	_button(playback, "◀ Frame", func(): _frg16d_step(-1))
+	_button(playback, "Frame ▶", func(): _frg16d_step(1))
+	_frg16d_loop_button = _button(playback, "Loop: ON", _frg16d_toggle_loop)
+	_frg16d_speed_select = OptionButton.new()
+	playback.add_child(_frg16d_speed_select)
+	for caption in ["0.25x", "0.5x", "1x", "1.5x", "2x"]:
+		_frg16d_speed_select.add_item(caption)
+	_frg16d_speed_select.select(2)
+	_frg16d_speed_select.item_selected.connect(_frg16d_set_speed)
+	_frg16d_label = _style_text(right, "0.00s / 1.10s (0%)", 13, Color("#a8d9ff"))
+	_frg16d_bar = HSlider.new()
+	_frg16d_bar.min_value = 0.0
+	_frg16d_bar.max_value = 1.0
+	_frg16d_bar.step = 0.005
+	_frg16d_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	right.add_child(_frg16d_bar)
+	_frg16d_bar.value_changed.connect(_frg16d_scrub_to)
+	_style_text(right, "Preview walk/run or combat motion; drag the timeline to inspect joint positions. Editing remains on the left.", 13)
 
 func _change_character(index: int) -> void:
 	if index < 0 or index >= Data.roster.size():
@@ -282,6 +313,8 @@ func _create_marker(role: String) -> void:
 
 func _change_state(index: int) -> void:
 	_selected_state = MODES[clampi(index, 0, MODES.size() - 1)]
+	_frg16d_elapsed = 0.0
+	_frg16d_sync_ui()
 	_refresh_sliders()
 	_apply_live()
 
@@ -497,6 +530,44 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		_frg16c_redo()
 		get_viewport().set_input_as_handled()
 
+# FRG16D: preview controls do not affect saved fighter poses or in-match animations.
+func _frg16d_toggle() -> void:
+	_frg16d_playing = not _frg16d_playing
+	if _frg16d_playing and _frg16d_elapsed >= _frg16d_duration:
+		_frg16d_elapsed = 0.0
+	_frg16d_sync_ui()
+
+func _frg16d_toggle_loop() -> void:
+	_frg16d_loop = not _frg16d_loop
+	_frg16d_sync_ui()
+
+func _frg16d_step(direction: int) -> void:
+	_frg16d_playing = false
+	_frg16d_elapsed = clampf(_frg16d_elapsed + float(direction) / 30.0, 0.0, _frg16d_duration)
+	_frg16d_sync_ui()
+
+func _frg16d_scrub_to(value: float) -> void:
+	_frg16d_playing = false
+	_frg16d_elapsed = clampf(value, 0.0, 1.0) * _frg16d_duration
+	_frg16d_sync_ui()
+
+func _frg16d_set_speed(index: int) -> void:
+	var speeds := [0.25, 0.5, 1.0, 1.5, 2.0]
+	if index < 0 or index >= speeds.size():
+		return
+	_frg16d_speed = float(speeds[index])
+
+func _frg16d_sync_ui() -> void:
+	if is_instance_valid(_frg16d_bar):
+		var alpha: float = clampf(_frg16d_elapsed / _frg16d_duration, 0.0, 1.0)
+		_frg16d_bar.set_value_no_signal(alpha)
+	if is_instance_valid(_frg16d_label):
+		_frg16d_label.text = "%.2fs / %.2fs (%d%%)" % [_frg16d_elapsed, _frg16d_duration, int(round(100.0 * _frg16d_elapsed / _frg16d_duration))]
+	if is_instance_valid(_frg16d_play_button):
+		_frg16d_play_button.text = "Pause" if _frg16d_playing else "Play"
+	if is_instance_valid(_frg16d_loop_button):
+		_frg16d_loop_button.text = "Loop: ON" if _frg16d_loop else "Loop: OFF"
+
 func _back() -> void:
 	get_tree().change_scene_to_file("res://scenes/main.tscn")
 
@@ -550,16 +621,27 @@ func _process(dt: float) -> void:
 	if not is_instance_valid(_model):
 		return
 	_model.rotation_degrees.y = _yaw
-	if not _gait_running:
-		_model.lab_paused = true
-	else:
-		_model.lab_paused = false
+	if _frg16d_playing:
+		_frg16d_elapsed += maxf(dt, 0.0) * _frg16d_speed
+		if _frg16d_elapsed >= _frg16d_duration:
+			if _frg16d_loop:
+				_frg16d_elapsed = fmod(_frg16d_elapsed, _frg16d_duration)
+			else:
+				_frg16d_elapsed = _frg16d_duration
+				_frg16d_playing = false
+	var phase: float = clampf(_frg16d_elapsed / _frg16d_duration, 0.0, 1.0)
+	# Only the Animation Lab enables these preview overrides.
+	_model.lab_preview_override = true
+	_model.lab_preview_phase = phase * TAU
+	_model.lab_preview_time = _frg16d_elapsed
+	_model.lab_paused = true
 	_model.walk = 1.0 if _selected_state in ["walk", "run"] else 0.0
 	_model.run = 1.0 if _selected_state == "run" else 0.0
 	_model.choreo_state = _selected_state if _selected_state not in ["idle", "walk", "run"] else "idle"
 	_model.choreo_weight = 0.0 if _selected_state in ["idle", "walk", "run"] else 1.0
-	_model.choreo_progress = fmod(float(Time.get_ticks_msec()) / 1100.0, 1.0) if _gait_running else 0.45
+	_model.choreo_progress = phase
 	_model.play_pose(_frg16b_preview_pose(), 18.0)
+	_frg16d_sync_ui()
 	if _model.skeleton == null:
 		return
 	for role in _marker_nodes:
@@ -572,3 +654,5 @@ func _process(dt: float) -> void:
 		marker.global_position = _model.skeleton.global_transform * _model.skeleton.get_bone_global_pose(bone_id).origin
 		var material: StandardMaterial3D = marker.material_override
 		material.albedo_color = Color("#ffda72") if role == _selected_bone else Color("#60d2ff")
+
+# FRG16D - animation lab preview timeline

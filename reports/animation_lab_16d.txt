@@ -1,0 +1,17 @@
+Fight Royale Godot - Update 16D: Animation Lab Preview Timeline
+
+Preview controls:
+- Play/Pause preview
+- Frame step backward or forward (1/30-second increments)
+- Timeline scrub 0 to 100 percent
+- Playback speed 0.25x, 0.5x, 1x, 1.5x, 2x
+- Optional looping
+- State changes reset preview position
+
+For walk/run, preview scrubbing drives the procedural leg/arm swing cycle.
+For combat states, preview controls drive secondary-motion progress.
+The existing AnimationLibrary poses remain separate static poses; this update does
+not create per-bone keyframes or a reusable animation timeline.
+
+Important: this updates only preview behavior. It does not change fighters'
+combat timings, skill damage, AI, or VRM skeleton files.
