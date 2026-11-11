@@ -1,0 +1,53 @@
+Fight Royale Godot - Update 19A.1: Browser roster audit
+Reference: https://github.com/KimmelDevs/Fight-Royale/blob/main/web/src/game/roster.ts
+Reference date: 2026-11-10 (published browser source, not unpushed local edits)
+Live Godot fighters: 17; published browser fighters: 23
+Already in Godot: 11; queued additions: 12
+
+QUEUED TO PORT (NOT YET PLAYABLE IN GODOT):
+  renji      kit=tonfa       model=fallback (aster.vrm)
+  gale       kit=wind        model=own (gale.vrm)
+  bob        kit=bomb        model=own (bob.vrm)
+  veyr       kit=sickle      model=own (veyr.vrm)
+  zarek      kit=glaive      model=own (zarek.vrm)
+  kaizen     kit=chainblade  model=own (kaizen.vrm)
+  nesa       kit=hammer      model=own (nesa.vrm)
+  roxy       kit=mage        model=own (roxy.vrm)
+  zenith     kit=glaive      model=own (zenith.vrm)
+  nythera    kit=scythe      model=own (nythera.vrm)
+  zephyr     kit=tristaff    model=own (zephyr.vrm)
+  raigo      kit=axeflail    model=fallback (garrick.vrm)
+
+LEGACY-ONLY IN GODOT (NOT QUEUED FOR REMAKE):
+  bruno
+  leon
+  sakura
+  sylva
+  volta
+  yuki
+
+REVIEW BEFORE RETIRING:
+  vesper - exists in browser roster, but its continued status is uncertain.
+
+MISSING NEW KIT DEFINITIONS IN CURRENT GODOT:
+  axeflail
+  bomb
+  chainblade
+  glaive
+  hammer
+  scythe
+  sickle
+  tonfa
+  tristaff
+  wind
+
+PLANNED BATCHES:
+  19B: zarek, kaizen, nesa
+  19C: roxy, nythera, zenith
+  19D: zephyr, renji, raigo
+  19E: gale, bob, veyr
+  19F: aster, garrick, kaede, ember, marina, nyx, rook, kira, raven, ash
+
+This update changes NO live roster, attacks, animation poses, or balance.
+Existing Duel vs CPU and CPU vs CPU should remain unchanged.
+Next step: import fully implemented character batches; avoid placeholder skills.

@@ -1,0 +1,271 @@
+{
+  "version": "19A.1",
+  "source": "https://github.com/KimmelDevs/Fight-Royale/blob/main/web/src/game/roster.ts",
+  "source_checked": "2026-11-10",
+  "purpose": "Migration staging. NOT yet active in Duel vs CPU or CPU vs CPU.",
+  "scope": {
+    "duel_vs_cpu": true,
+    "cpu_vs_cpu": true,
+    "shop": false,
+    "survival": false,
+    "online": false
+  },
+  "rules": [
+    "Never add a fighter to data/roster.json without attacks, stats and poses.",
+    "Only bring forward continuing browser fighters; do not port legacy-only concepts.",
+    "Keep existing working fighters until replacement kits pass validation.",
+    "Always preserve user-provided VRM models and existing audio files.",
+    "Recheck unpublished browser changes before migrating individual fighter mechanics."
+  ],
+  "browser_fighters": [
+    {
+      "id": "renji",
+      "title": "The Counter Fist",
+      "kit": "tonfa",
+      "element": "dark",
+      "vrm": "aster",
+      "review_required": false
+    },
+    {
+      "id": "aster",
+      "title": "Azure Knight",
+      "kit": "knight",
+      "element": "light",
+      "vrm": "aster",
+      "review_required": false
+    },
+    {
+      "id": "vesper",
+      "title": "Crimson Duelist",
+      "kit": "knight",
+      "element": "flame",
+      "vrm": "vesper",
+      "review_required": true
+    },
+    {
+      "id": "garrick",
+      "title": "Iron Vanguard",
+      "kit": "greatsword",
+      "element": "earth",
+      "vrm": "garrick",
+      "review_required": false
+    },
+    {
+      "id": "kaede",
+      "title": "Moonlit Blade",
+      "kit": "katana",
+      "element": "moon",
+      "vrm": "kaede",
+      "review_required": false
+    },
+    {
+      "id": "ember",
+      "title": "Flame Witch",
+      "kit": "mage",
+      "element": "fire",
+      "vrm": "ember",
+      "review_required": false
+    },
+    {
+      "id": "marina",
+      "title": "Tide Sorceress",
+      "kit": "mage",
+      "element": "water",
+      "vrm": "marina",
+      "review_required": false
+    },
+    {
+      "id": "nyx",
+      "title": "Shadow Blade",
+      "kit": "assassin",
+      "element": "shadow",
+      "vrm": "nyx",
+      "review_required": false
+    },
+    {
+      "id": "rook",
+      "title": "Iron Fist",
+      "kit": "knuckles",
+      "element": "force",
+      "vrm": "rook",
+      "review_required": false
+    },
+    {
+      "id": "gale",
+      "title": "Wind Dancer",
+      "kit": "wind",
+      "element": "wind",
+      "vrm": "gale",
+      "review_required": false
+    },
+    {
+      "id": "bob",
+      "title": "Mad Bomber",
+      "kit": "bomb",
+      "element": "blast",
+      "vrm": "bob",
+      "review_required": false
+    },
+    {
+      "id": "kira",
+      "title": "Tempest Kicker",
+      "kit": "kicks",
+      "element": "chi",
+      "vrm": "kira",
+      "review_required": false
+    },
+    {
+      "id": "raven",
+      "title": "Hex Weaver",
+      "kit": "mage",
+      "element": "electric",
+      "vrm": "raven",
+      "review_required": false
+    },
+    {
+      "id": "ash",
+      "title": "Crimson Hunter",
+      "kit": "bow",
+      "element": "blood",
+      "vrm": "ash",
+      "review_required": false
+    },
+    {
+      "id": "veyr",
+      "title": "Venom Reaper",
+      "kit": "sickle",
+      "element": "venom",
+      "vrm": "veyr",
+      "review_required": false
+    },
+    {
+      "id": "zarek",
+      "title": "Storm Glaive",
+      "kit": "glaive",
+      "element": "storm",
+      "vrm": "zarek",
+      "review_required": false
+    },
+    {
+      "id": "kaizen",
+      "title": "Chainblade Berserker",
+      "kit": "chainblade",
+      "element": "chain",
+      "vrm": "kaizen",
+      "review_required": false
+    },
+    {
+      "id": "nesa",
+      "title": "Hammer Princess",
+      "kit": "hammer",
+      "element": "force",
+      "vrm": "nesa",
+      "review_required": false
+    },
+    {
+      "id": "roxy",
+      "title": "Snow Puppet Master",
+      "kit": "mage",
+      "element": "frost",
+      "vrm": "roxy",
+      "review_required": false
+    },
+    {
+      "id": "zenith",
+      "title": "The Iron Sovereign",
+      "kit": "glaive",
+      "element": "metal",
+      "vrm": "zenith",
+      "review_required": false
+    },
+    {
+      "id": "nythera",
+      "title": "Gravity Reaper",
+      "kit": "scythe",
+      "element": "gravity",
+      "vrm": "nythera",
+      "review_required": false
+    },
+    {
+      "id": "zephyr",
+      "title": "Dragon Dancer",
+      "kit": "tristaff",
+      "element": "dragon",
+      "vrm": "zephyr",
+      "review_required": false
+    },
+    {
+      "id": "raigo",
+      "title": "Iron Bastion",
+      "kit": "axeflail",
+      "element": "iron",
+      "vrm": "garrick",
+      "review_required": false
+    }
+  ],
+  "legacy_only_ids": [
+    "volta",
+    "sylva",
+    "leon",
+    "sakura",
+    "yuki",
+    "bruno"
+  ],
+  "needs_review_ids": [
+    "vesper"
+  ],
+  "port_batches": [
+    {
+      "id": "19B",
+      "fighters": [
+        "zarek",
+        "kaizen",
+        "nesa"
+      ],
+      "focus": "Weapon-heavy duelists and hammer combat"
+    },
+    {
+      "id": "19C",
+      "fighters": [
+        "roxy",
+        "nythera",
+        "zenith"
+      ],
+      "focus": "Ice, gravity and magnetic combat"
+    },
+    {
+      "id": "19D",
+      "fighters": [
+        "zephyr",
+        "renji",
+        "raigo"
+      ],
+      "focus": "Unique weapons, counters and stance systems"
+    },
+    {
+      "id": "19E",
+      "fighters": [
+        "gale",
+        "bob",
+        "veyr"
+      ],
+      "focus": "Movement, explosives and sickles"
+    },
+    {
+      "id": "19F",
+      "fighters": [
+        "aster",
+        "garrick",
+        "kaede",
+        "ember",
+        "marina",
+        "nyx",
+        "rook",
+        "kira",
+        "raven",
+        "ash"
+      ],
+      "focus": "Reconcile existing kits with latest browser implementations"
+    }
+  ]
+}
