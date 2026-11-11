@@ -77,6 +77,7 @@ var hp := 2500.0
 var max_guard := 100.0
 var guard := 100.0
 var guard_fatigue := 0
+var zarek_momentum := 0  # FRG19B projectile-destroy Clash Momentum
 var _fatigue_decay := 3.0
 var move_speed := 3.2
 var walk_speed := 2.6
@@ -209,11 +210,18 @@ func remove_status(effect_id: String) -> void:
 		status_runtime.clear_effect(effect_id)
 
 func notify_passive_event(event_id: String, other: Node = null) -> void:
+
+	# FRG19B: only real projectile destroys earn Zarek's Clash Momentum.
+	if kit == "glaive" and String(look.get("element", "")) == "storm" and event_id == "projectile_destroyed":
+		zarek_momentum += 1
 	if status_runtime != null:
 		status_runtime.on_event(event_id, other)
 
 func status_summary() -> String:
-	return status_runtime.short_label() if status_runtime != null else ""
+	var summary: String = status_runtime.short_label() if status_runtime != null else ""
+	if kit == "glaive" and zarek_momentum > 0:
+		return "Momentum x%d" % zarek_momentum if summary.is_empty() else "Momentum x%d, %s" % [zarek_momentum, summary]
+	return summary
 
 # FRG15D - status HUD and countdown indicators
 func status_details() -> Array[Dictionary]:
@@ -321,7 +329,8 @@ func add_guard_fatigue() -> void:
 
 func attack_time_multiplier() -> float:
 	# Each stack makes attack/skill execution 2% slower; maximum 10 stacks.
-	return (1.0 / maxf(1.0 - 0.02 * float(guard_fatigue), 0.5)) * status_runtime.attack_time_multiplier()
+	var factor: float = 1.0 + 0.20 * float(mini(zarek_momentum, 5)) if kit == "glaive" and atk_id.begins_with("l") else 1.0
+	return (1.0 / maxf(1.0 - 0.02 * float(guard_fatigue), 0.5)) * status_runtime.attack_time_multiplier() / factor
 
 ## True throughout the *entire* damaging window, not just on the first active frame.
 func active_melee() -> bool:
@@ -656,7 +665,7 @@ func receive_hit(attacker, a: Dictionary, power: float) -> String:
 	if counter_t > 0.0: counter_t = 0.0; return "counter"
 	var dmg: float = float(a.dmg) * power * status_runtime.incoming_multiplier()
 	if state == S.BLOCK:
-		if state_t <= parry_window:
+		if state_t <= parry_window and not bool(a.get("no_parry", false)):
 			guard = minf(guard + max_guard * 0.10, max_guard)
 			model.flash(Color("#99e6ff"), 0.15)
 			return "parry"

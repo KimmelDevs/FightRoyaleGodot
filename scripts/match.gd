@@ -34,6 +34,7 @@ var _timers: Array = []         # [time, Callable]
 var _projectiles: Array = []    # dictionaries
 var _strike_marks: Array = []   # {target, land, id}
 var _trails: Dictionary = {}    # Fighter -> Trail
+var _frg19b_multi_phase: Dictionary = {}
 var _melee_hits: Dictionary = {}  # FRG07 - persistent melee contact and directional knockback
 const MELEE_FRONT_DOT := 0.15
 const MELEE_HEIGHT_TOLERANCE := 1.3
@@ -137,7 +138,7 @@ func start_round() -> void:
 			p.node.queue_free()
 	for f in fighters: f.queue_free()
 	for t in _trails.values(): t.queue_free()
-	fighters.clear(); _trails.clear(); _melee_hits.clear(); _projectiles.clear(); _strike_marks.clear(); _timers.clear()
+	fighters.clear(); _trails.clear(); _melee_hits.clear(); _frg19b_multi_phase.clear(); _projectiles.clear(); _strike_marks.clear(); _timers.clear()
 	_duel_seconds_left = float(cfg.get("round_seconds", 120))
 	_duel_clock_running = false
 	fx.clear()
@@ -327,6 +328,7 @@ func _process(real_dt: float) -> void:
 		# A sword remains dangerous for the entire active window. One contact per
 		# defender/swing is enforced in _melee, so framerate cannot multiply damage.
 		if dt > 0.0 and not round_over and f.active_melee():
+			_frg19b_multi_contact(f)
 			_active_melee_contact(f)
 		if _trails.has(f):
 			_trails[f].emitting = f.trail_on()
@@ -1119,3 +1121,26 @@ func hud() -> Dictionary:
 		"paused": paused,
 		"can_restart": can_restart,
 	}
+
+
+# FRG19B: multi-pass moves use real melee checks, once per target each beat.
+func _frg19b_multi_contact(f: Fighter) -> void:
+	if not f.active_melee():
+		_frg19b_multi_phase.erase(f.id)
+		return
+	var hits: int = clampi(int(f.atk.get("multi_hit", 1)), 1, 12)
+	if hits <= 1:
+		return
+	var attack_t: float = (f.state_t - float(f.atk.wind) * f.attack_time_multiplier())
+	var length: float = maxf(float(f.atk.active) * f.attack_time_multiplier(), 0.025)
+	var phase: int = clampi(int(floor(maxf(attack_t, 0.0) * hits / length)), 0, hits - 1)
+	var key: String = str(f.id)
+	var saved: Dictionary = _frg19b_multi_phase.get(key, {})
+	var original: int = f.swing_serial
+	if saved.get("move", "") != f.atk_id or int(saved.get("serial", -1)) != original:
+		saved = {"move": f.atk_id, "phase": 0, "serial": original}
+	if phase > int(saved.get("phase", 0)):
+		f.swing_serial += phase - int(saved.get("phase", 0))
+		saved["phase"] = phase
+		saved["serial"] = f.swing_serial
+	_frg19b_multi_phase[key] = saved

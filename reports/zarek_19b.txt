@@ -1,0 +1,9 @@
+Fight Royale Godot — 19B Zarek first playable import
+Source: browser roster.ts, kits.ts, fighter.ts (checked 2026-11-10)
+Zarek: added to selection, using zarek.vrm if present (Godot must import VRMs first).
+Combat: 5 light attacks + charged + Z/X/C/V, projectile-destroy momentum, actual multi-hit contact checks.
+Weapons: procedural dual-ended storm glaive attached to right hand.
+Animation: katana pose aliases for this initial pass. Dedicated source-accurate poses still pending.
+Not yet browser-equivalent: dash-cancels, special movement/cinematics and custom Zarek animation timings.
+Kaizen and Nesa are NOT added by this installer. They will get individual updates instead of unfinished kits.
+No shop, survival or online changes. Original models and SFX are preserved.
