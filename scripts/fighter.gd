@@ -127,6 +127,8 @@ var zephyr_rhythm_seconds := 0.0
 var zenith_magnetic_stacks := 0
 var zenith_magnetic_timer := 0.0
 # FRG19L — Garrick receives Resolve from confirmed projectile parries/interceptions.
+# FRG19M — Kaede Counter Bloom, round-local (new Fighter each rematch).
+var kaede_counter_bloom := 0
 var garrick_resolve := 0
 var garrick_crack_cooldown := 0.0
 var zarek_momentum := 0  # FRG19B projectile-destroy Clash Momentum
@@ -319,6 +321,10 @@ func status_summary() -> String:
 		var tag: String = "READ x%d" % renji_reads
 		if renji_reflection_t > 0.0: tag += " · REFLECT %.1fs" % renji_reflection_t
 		return tag if summary.is_empty() else tag + ", " + summary
+	# FRG19M — Kaede-only counter passive (0.80× to 1.00× damage).
+	if kit == "katana":
+		var bloom: String = "COUNTER BLOOM %d/4" % kaede_counter_bloom
+		return bloom if summary.is_empty() else bloom + ", " + summary
 	if kit == "greatsword" and garrick_resolve > 0:
 		var resolve_tag: String = "RESOLVE %d/3" % garrick_resolve
 		return resolve_tag if summary.is_empty() else resolve_tag + ", " + summary
@@ -686,6 +692,14 @@ func _start_attack(aid: String) -> void:
 	atk_power *= dmg_mult * (RAGE_MULT if rage_t > 0.0 else 1.0) * status_runtime.outgoing_multiplier()
 	atk_id = aid
 	atk = attacks[aid].duplicate(true)
+	# FRG19M — Kaede begins 20% weaker and regains 5% per confirmed Z counter.
+	if kit == "katana":
+		atk_power *= 0.80 + 0.05 * float(kaede_counter_bloom)
+		if aid == "c":
+			# Prevent residual dash/steering from sliding her during Thousand Cuts.
+			_steer_vel = Vector3.ZERO
+			_dash_t = 0.0
+			_dodge_t = 0.0
 	# FRG19K: the sword, not the shield bash, gains Judgment power.
 	if kit == "knight" and String(look.get("element", "")) == "light" and aster_judgment_t > 0.0:
 		if aid.begins_with("l") or aid in ["heavy", "x", "c"]:
@@ -920,7 +934,11 @@ func receive_hit(attacker, a: Dictionary, power: float) -> String:
 		model.flash(Color("#baf3ff"), 0.17)
 		return "warded"
 	if ward_t > 0.0: return "warded"
-	if counter_t > 0.0: counter_t = 0.0; return "counter"
+	if counter_t > 0.0:
+		counter_t = 0.0
+		# FRG19M — award only after an actual incoming hit triggers Z stance.
+		if kit == "katana": kaede_counter_bloom = mini(4, kaede_counter_bloom + 1)
+		return "counter"
 
 	# FRG19J Death Feint counters only parryable hits; it never prevents
 	# genuinely unblockable attacks or invulnerable misses.

@@ -1,0 +1,20 @@
+{
+  "version": "19M.1",
+  "character": "kaede",
+  "state": "FIRST PLAYABLE REFINEMENT",
+  "source": "https://raw.githubusercontent.com/KimmelDevs/Fight-Royale/main/web/src/game/kits.ts",
+  "completed": [
+    "confirmed Z counter builds Counter Bloom to 4 stacks",
+    "damage 0.8x base to 1.0x at full bloom",
+    "Counter Bloom appears in HUD",
+    "Thousand Cuts fixed target zone",
+    "Thousand Cuts cancels after first three slices if none cause real HP damage",
+    "C cancels dash inertia and plays distinct effect"
+  ],
+  "pending": [
+    "seven bespoke sheath-and-draw poses",
+    "advanced slash choreography and sound timing",
+    "Godot engine playtest"
+  ],
+  "notes": "Kaede VRM and original roster/save ID preserved. Other fighters remain unchanged."
+}

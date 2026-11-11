@@ -1,0 +1,5 @@
+19M — Kaede Moonlit Blade
+Z: confirmed counter increases Counter Bloom, 0/4 to 4/4.
+Damage: starts 0.80x, +0.05x per Bloom stack, 1.00x maximum.
+Thousand Cuts: fixed area, seven beats, remaining beats canceled if first three deal no HP damage.
+Pending animation refinement: custom sheath poses and Godot in-game verification.

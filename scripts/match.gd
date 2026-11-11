@@ -988,11 +988,18 @@ func _update_projectiles(dt: float) -> void:
 func _strike(f: Fighter, a: Dictionary, power: float) -> void:
 	var rnd := _round
 	var color := Color(f.look.glow)
+	# FRG19M — capture the initial target point; no homing between slices.
+	var kaede_cuts: bool = f.kit == "katana" and String(a.get("style", "")) == "kaede_thousand_cuts"
+	var kaede_origin: Vector3 = f.opponent.position if kaede_cuts and f.opponent != null else f.position
+	kaede_origin.y = 0.0
+	var kaede_contact: Dictionary = {"connected": false}
+	var kaede_serial: int = f.swing_serial
 	var one := func(i: int, self_ref: Callable) -> void:
 		if rnd != _round or f.is_down(): return
+		if kaede_cuts and (f.swing_serial != kaede_serial or (i >= 3 and not bool(kaede_contact["connected"]))): return
 		var src = f if a.at == "self" or f.opponent == null else f.opponent
 
-		var center: Vector3 = src.position; center.y = 0
+		var center: Vector3 = kaede_origin if kaede_cuts else src.position; center.y = 0
 		# FRG19D: Nesa C advances the three heart impacts away from her.
 		if String(a.get("style", "")) == "nesa_heart_slam" and f.kit == "hammer":
 			center += f.forward() * (1.05 + float(i) * 0.75)
@@ -1004,6 +1011,7 @@ func _strike(f: Fighter, a: Dictionary, power: float) -> void:
 		later(wait, func():
 			_strike_marks.erase(mark)
 			if rnd != _round: return
+			if kaede_cuts and (f.is_down() or f.swing_serial != kaede_serial or (i >= 3 and not bool(kaede_contact["connected"]))): return
 
 			var at: Vector3 = Vector3(f.position.x, 0, f.position.z) if a.at == "self" else center
 			if String(a.get("style", "")) == "nesa_heart_slam" and f.kit == "hammer":
@@ -1013,7 +1021,11 @@ func _strike(f: Fighter, a: Dictionary, power: float) -> void:
 				var to: Vector3 = d.position - at; to.y = 0
 				if to.length() <= float(a.radius) + d.radius * 0.5 and not d.airborne():
 					var dir: Vector3 = to.normalized() if to.length() > 0.05 else (d.position - f.position).normalized()
+					var hp_before: float = d.hp
 					apply_hit(f, d, a, power, d.chest(), dir, true)
+					# FRG19M — shield blocks and invulnerable misses do NOT count.
+					if kaede_cuts and i < 3 and d.hp < hp_before:
+						kaede_contact["connected"] = true
 				elif to.length() <= float(a.radius) + 1.0:
 					fx.number(d.chest() + Vector3(0, 0.8, 0), "DODGE", Color("#c9d3e6"), 0.7)
 			if i + 1 < int(a.repeat): self_ref.call(i + 1, self_ref))
@@ -1039,6 +1051,9 @@ func _impact(a: Dictionary, pos: Vector3, color: Color, radius: float) -> void:
 			fx.ring(g, Color("#ff95c1"), radius * 1.3, 0.38, 0.94)
 			fx.flash(g + Vector3(0, 0.7, 0), Color("#ffe1f0"), radius * 0.60, 0.18, 0.88)
 			add_trauma(0.55 if a.style == "nesa_heart_slam" else 0.82)
+		"kaede_thousand_cuts": # FRG19M — sharp, stationary katana cut beats
+			fx.sparks(g + Vector3(0, 1.1, 0), color, 15, 6.0)
+			fx.flash(g + Vector3(0, 1.0, 0), Color("#ffe0eb"), 0.42, 0.10, 0.75)
 		"iron_tempest": # FRG19L: individual greatsword swing contact VFX
 			fx.sparks(g + Vector3(0, 0.9, 0), color, 18, 5.3)
 			fx.ring(g + Vector3(0, 0.65, 0), color, radius * 0.75, 0.18, 0.68)
@@ -1275,7 +1290,9 @@ func apply_hit(attacker, d: Fighter, a: Dictionary, power: float, hit_pos: Vecto
 				if attacker:
 					var counter: Dictionary = d.attacks.heavy.duplicate()
 					counter.dmg = 180; counter.heavy = true; counter.stun = 0.8
-					apply_hit(d, attacker, counter, d.dmg_mult, attacker.chest(), -dir, false)
+					var counter_power: float = d.dmg_mult
+					if d.kit == "katana": counter_power *= 0.80 + 0.05 * float(d.kaede_counter_bloom)
+					apply_hit(d, attacker, counter, counter_power, attacker.chest(), -dir, false)
 		"guard_break":
 			audio.play_event("guard_break", hit_pos, true, d.get_instance_id())
 			fx.combat_guard_break(hit_pos)
