@@ -1,0 +1,12 @@
+Fight Royale Godot — Update 17B: Weapon Trails
+
+- Dual-layer transparent-additive ribbons: broad colored edge and crisp white-tinted core.
+- Interpolated samples on quick swings reduce visual gaps at variable frame rates.
+- Shorter trails for fast fighters; longer trails for heavy weapons.
+- Fighter glow color follows the existing roster data.
+- Pauses do not advance trail ages or generate samples.
+- Teleports will not draw streaks across the arena.
+- GL Compatibility renderer; no shader or third-party dependencies.
+- No changes to attack mechanics, hitboxes, passives, AI, or cooldowns.
+
+Open the Godot editor after installation to load updated scripts.

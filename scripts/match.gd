@@ -200,6 +200,8 @@ func _spawn(slot: Dictionary, team: int, pos: Vector3) -> Fighter:
 	fighters.append(f)
 	if f.model.blade_base and f.model.blade_tip:
 		var tr := Trail.new(f.model.blade_base, f.model.blade_tip, Color(f.look.glow))
+		# FRG17B: visual styling uses the existing character kit / element.
+		tr.configure(String(f.kit), String(f.look.get("element", "")))
 		add_child(tr)
 		_trails[f] = tr
 	if String(slot.peer).begins_with("cpu"): f.auto_approach = not f.kit in ["mage", "bow"]
