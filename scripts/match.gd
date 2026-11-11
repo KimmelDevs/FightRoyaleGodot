@@ -370,17 +370,8 @@ func now() -> float:
 
 func _on_swing(f: Fighter) -> void:
 	var a := f.atk
-	var audio_type := String(a.get("type", "melee"))
-	var cue := "swing_light"
-	if audio_type == "projectile":
-		cue = "arrow" if f.kit == "bow" else "cast_magic"
-	elif audio_type in ["strike", "buff", "blink"]:
-		cue = "cast_magic"
-	elif f.kit in ["knuckles", "kicks"]:
-		cue = "swing_fist"
-	elif f.atk_id in ["heavy", "l3", "v"]:
-		cue = "swing_heavy"
-	audio.play_event(cue, f.chest())
+	# FRG18C: independent per-fighter swing audio, with kit-aware cues.
+	audio.play_attack_swing(String(f.kit), String(f.atk_id), a, f.chest(), f.get_instance_id())
 	var el: String = f.look.element
 	var big: bool = f.atk_id in ["z", "x", "c", "v", "heavy", "l3"]
 	if el == "earth" and big:
@@ -820,7 +811,10 @@ func apply_hit(attacker, d: Fighter, a: Dictionary, power: float, hit_pos: Vecto
 	var shield_pos := d.model.shield_node.global_position if d.model.shield_node else hit_pos
 	match result:
 		"hit", "crit", "ko":
-			audio.play_event("hit_heavy" if heavy else "hit_light", hit_pos)
+			audio.play_event("hit_heavy" if heavy else "hit_light", hit_pos, true, d.get_instance_id())
+			if attacker is Fighter:
+				var special_audio: bool = heavy or String(attacker.atk_id) in ["z", "x", "c", "v", "l3"]
+				audio.play_special_elemental_hit(String(attacker.look.element), hit_pos, attacker.get_instance_id(), special_audio)
 			var crit := d.last_crit
 			fx.combat_hit(hit_pos, glow, dir, heavy)
 			# FRG17C: cosmetic accent only after a landed hit.
@@ -832,13 +826,13 @@ func apply_hit(attacker, d: Fighter, a: Dictionary, power: float, hit_pos: Vecto
 			add_trauma(0.5 if a.heavy else 0.3 if heavy else 0.18)
 			hit_stop(0.11 if a.heavy else 0.07 if heavy else 0.045)
 		"blocked":
-			audio.play_event("block", shield_pos)
+			audio.play_event("block", shield_pos, true, d.get_instance_id())
 			if attacker is Fighter: attacker.add_guard_fatigue()
 			fx.combat_guard(shield_pos, dir, false)
 			fx.number(shield_pos + Vector3(0, 0.4, 0), "BLOCK", Color("#c9d3e6"), 0.7)
 			add_trauma(0.14); hit_stop(0.04)
 		"parry":
-			audio.play_event("parry", shield_pos)
+			audio.play_event("parry", shield_pos, true, d.get_instance_id())
 			if attacker is Fighter: attacker.add_guard_fatigue()
 			# Parry delays attacks with hit-stop, not a full stun.
 			fx.combat_guard(shield_pos, dir, true)
@@ -851,7 +845,7 @@ func apply_hit(attacker, d: Fighter, a: Dictionary, power: float, hit_pos: Vecto
 				counter.dmg = 180; counter.heavy = true; counter.stun = 0.8
 				apply_hit(d, attacker, counter, d.dmg_mult, attacker.chest(), -dir, false)
 		"guard_break":
-			audio.play_event("guard_break", hit_pos)
+			audio.play_event("guard_break", hit_pos, true, d.get_instance_id())
 			fx.combat_guard_break(hit_pos)
 			fx.number(hit_pos + Vector3(0, 0.55, 0), "GUARD BREAK", Color("#ff8a50"), 1.2)
 			add_trauma(0.55); hit_stop(0.12)

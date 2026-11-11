@@ -1,0 +1,8 @@
+Fight Royale Godot Update 18C (18C.1)
+Independent audio cooldowns per fighter in CPU vs CPU and duels.
+Kit-aware attack-swing cues and quiet elemental special-hit accents.
+No gameplay, character stats, attack timing or model changes.
+SFX root: res://sfx/ (no files moved or copied)
+Additional sound candidate files present: 16/16
+Absent audio remains nonfatal until imported into Godot.
+Edit data/audio_profiles_18c.json to disable elemental_special_hits or adjust mappings.

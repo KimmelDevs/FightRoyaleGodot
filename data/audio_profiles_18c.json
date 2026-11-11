@@ -1,0 +1,82 @@
+{
+  "version": "18C.1",
+  "elemental_special_hits": true,
+  "new_events": {
+    "element_fire": {
+      "files": [
+        "fight/fire_explosion.mp3",
+        "misc/explosion_spell.mp3"
+      ],
+      "volume_db": -17,
+      "cooldown_ms": 175
+    },
+    "element_lightning": {
+      "files": [
+        "bunker/futuristic_electricity_sparks.mp3",
+        "fight/fast_thunder_impact.mp3"
+      ],
+      "volume_db": -17,
+      "cooldown_ms": 175
+    },
+    "element_ice": {
+      "files": [
+        "misc/icicles_spell_whoosh.mp3",
+        "bunker/dropping_ice_into_a_glass.mp3"
+      ],
+      "volume_db": -17,
+      "cooldown_ms": 175
+    },
+    "element_water": {
+      "files": [
+        "misc/fairy_water_spell.mp3",
+        "fight/water_drop_splashes_in_cave.mp3"
+      ],
+      "volume_db": -17,
+      "cooldown_ms": 175
+    },
+    "element_wind": {
+      "files": [
+        "fight/fast_air_transition_sweep.mp3",
+        "fight/quick_zoom_impact.mp3"
+      ],
+      "volume_db": -18,
+      "cooldown_ms": 175
+    },
+    "element_earth": {
+      "files": [
+        "fight/apocalyptic_stomp_impact.mp3",
+        "fight/underground_explosion_impact_echo.mp3"
+      ],
+      "volume_db": -19,
+      "cooldown_ms": 200
+    },
+    "element_light": {
+      "files": [
+        "fight/shot_light_energy_flowing.mp3",
+        "game_sports/sword_magic_drag.mp3"
+      ],
+      "volume_db": -18,
+      "cooldown_ms": 175
+    },
+    "element_dark": {
+      "files": [
+        "misc/arcane_chain_spell.mp3",
+        "fight/magic_whip_swell.mp3"
+      ],
+      "volume_db": -18,
+      "cooldown_ms": 175
+    }
+  },
+  "swing_kits": {
+    "knuckles": "swing_fist",
+    "kicks": "swing_fist",
+    "greatsword": "swing_heavy",
+    "hammer": "swing_heavy",
+    "bow": "arrow",
+    "staff": "swing_light",
+    "katana": "swing_light",
+    "daggers": "swing_light",
+    "scythe": "swing_heavy",
+    "glaive": "swing_heavy"
+  }
+}
