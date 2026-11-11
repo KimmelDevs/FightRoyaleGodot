@@ -129,6 +129,8 @@ var zenith_magnetic_timer := 0.0
 # FRG19L — Garrick receives Resolve from confirmed projectile parries/interceptions.
 # FRG19M — Kaede Counter Bloom, round-local (new Fighter each rematch).
 var kaede_counter_bloom := 0
+# FRG19N — tracks fire-mage ground hazards; each Fighter is round-local.
+var ember_ground_patches := 0
 var garrick_resolve := 0
 var garrick_crack_cooldown := 0.0
 var zarek_momentum := 0  # FRG19B projectile-destroy Clash Momentum
@@ -325,6 +327,9 @@ func status_summary() -> String:
 	if kit == "katana":
 		var bloom: String = "COUNTER BLOOM %d/4" % kaede_counter_bloom
 		return bloom if summary.is_empty() else bloom + ", " + summary
+	if kit == "mage" and String(look.get("element", "")) == "fire":
+		var fire_tag: String = "FIRE PATCHES %d" % ember_ground_patches
+		return fire_tag if summary.is_empty() else fire_tag + ", " + summary
 	if kit == "greatsword" and garrick_resolve > 0:
 		var resolve_tag: String = "RESOLVE %d/3" % garrick_resolve
 		return resolve_tag if summary.is_empty() else resolve_tag + ", " + summary

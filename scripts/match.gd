@@ -36,6 +36,8 @@ var _strike_marks: Array = []   # {target, land, id}
 
 # FRG19E — snow puppets live only for their current round.
 var _roxy_puppets: Array[Dictionary] = []
+# FRG19N — Ember ground patches are fully owned by the match and reset per round.
+var _ember_patches: Array[Dictionary] = []
 var _trails: Dictionary = {}    # Fighter -> Trail
 var _frg19b_multi_phase: Dictionary = {}
 var _melee_hits: Dictionary = {}  # FRG07 - persistent melee contact and directional knockback
@@ -145,6 +147,9 @@ func start_round() -> void:
 		if is_instance_valid(puppet["node"]):
 			puppet["node"].queue_free()
 	_roxy_puppets.clear()
+	for ember_patch in _ember_patches:
+		if is_instance_valid(ember_patch["node"]): ember_patch["node"].queue_free()
+	_ember_patches.clear()
 	fighters.clear(); _trails.clear(); _melee_hits.clear(); _frg19b_multi_phase.clear(); _projectiles.clear(); _strike_marks.clear(); _timers.clear()
 	_duel_seconds_left = float(cfg.get("round_seconds", 120))
 	_duel_clock_running = false
@@ -346,6 +351,7 @@ func _process(real_dt: float) -> void:
 			_trails[f].tick(dt)
 	_update_projectiles(dt)
 	_roxy_step_puppets(dt)
+	_ember_step_patches(dt) # FRG19N: no burning-ground ticks during pause
 	_nythera_step_wells(dt)
 	_veyr_step_festivals(dt)
 	_blade_light(dt)
@@ -414,6 +420,100 @@ func _on_swing(f: Fighter) -> void:
 		"blink": _blink(f, a)
 		_: _melee(f, a)
 
+
+# FRG19N — Ember ground fire: four max per caster, 20 seconds each.
+func _ember_add_patch(caster: Fighter, at: Vector3, radius: float) -> void:
+	if not is_instance_valid(caster) or caster.is_down() or round_over: return
+	var owned: Array = _ember_patches.filter(func(p): return p["owner"] == caster)
+	if owned.size() >= 4:
+		var oldest: Dictionary = owned[0]
+		if is_instance_valid(oldest["node"]): oldest["node"].queue_free()
+		_ember_patches.erase(oldest)
+		caster.ember_ground_patches = maxi(0, caster.ember_ground_patches - 1)
+	var marker := MeshInstance3D.new()
+	var mesh := CylinderMesh.new()
+	mesh.top_radius = 1.0
+	mesh.bottom_radius = 1.0
+	mesh.height = 0.015
+	marker.mesh = mesh
+	marker.material_override = Fx.unlit(Color("#ed692c"), 0.36, true)
+	marker.scale = Vector3(radius, 1.0, radius)
+	add_child(marker)
+	marker.global_position = Vector3(at.x, 0.045, at.z)
+	_ember_patches.append({"node": marker, "owner": caster, "center": Vector3(at.x, 0.0, at.z), "radius": radius, "left": 20.0, "tick": 0.0})
+	caster.ember_ground_patches += 1
+	fx.ring(at, Color("#ff8e36"), radius, 0.4, 0.7)
+
+func _ember_step_patches(dt: float) -> void:
+	if dt <= 0.0 or round_over: return
+	for patch in _ember_patches.duplicate():
+		var caster: Fighter = patch["owner"]
+		patch["left"] = float(patch["left"]) - dt
+		if not is_instance_valid(caster) or caster.is_down() or float(patch["left"]) <= 0.0:
+			if is_instance_valid(patch["node"]): patch["node"].queue_free()
+			_ember_patches.erase(patch)
+			if is_instance_valid(caster): caster.ember_ground_patches = maxi(0, caster.ember_ground_patches - 1)
+			continue
+		patch["tick"] = float(patch["tick"]) + dt
+		if float(patch["tick"]) < 0.75: continue
+		patch["tick"] = 0.0
+		for defender in enemies_of(caster):
+			var to_fire: Vector3 = defender.position - patch["center"]
+			to_fire.y = 0.0
+			if to_fire.length() <= float(patch["radius"]) + defender.radius * 0.35 and not defender.airborne():
+				defender.add_status("burn", 1, 1.25)
+				fx.motes(defender.position + Vector3(0.0, 0.12, 0.0), Color("#ff9a39"), 2)
+
+func _ember_absolute_combustion(caster: Fighter, attack: Dictionary) -> void:
+	if not is_instance_valid(caster) or caster.is_down() or round_over: return
+	var total_fire := 0
+	for patch in _ember_patches.duplicate():
+		if patch["owner"] != caster: continue
+		# The beam consumes nearby owned ground fire, not an enemy's fire.
+		if caster.position.distance_to(patch["center"]) > 12.0: continue
+		total_fire += 1
+		if is_instance_valid(patch["node"]): patch["node"].queue_free()
+		_ember_patches.erase(patch)
+		caster.ember_ground_patches = maxi(0, caster.ember_ground_patches - 1)
+	var start_pos: Vector3 = caster.chest()
+	var direction: Vector3 = caster.forward()
+	if caster.opponent != null and not caster.opponent.is_down():
+		direction = caster.opponent.chest() - start_pos
+		direction.y = 0.0
+		if direction.length_squared() > 0.01: direction = direction.normalized()
+		else: direction = caster.forward()
+	direction.y = 0.0
+	direction = direction.normalized()
+	# Strong beam visuals use the existing FX API, no new audio or materials required.
+	for i in range(8):
+		var pos: Vector3 = start_pos + direction * (0.8 + float(i) * 1.20)
+		fx.flash(pos, Color("#fff1b5"), 0.45 + float(total_fire) * 0.07, 0.20, 0.9)
+	fx.ring(caster.position, Color("#ff8c41"), 2.2 + float(total_fire) * 0.28, 0.36, 0.85)
+	var hit_count := 0
+	for defender in enemies_of(caster):
+		var to_target: Vector3 = defender.chest() - start_pos
+		var forward_distance: float = to_target.dot(direction)
+		if forward_distance < 0.0 or forward_distance > 10.2: continue
+		var nearest: Vector3 = start_pos + direction * forward_distance
+		if defender.chest().distance_to(nearest) > 1.10 + defender.radius: continue
+		var burn_consumed := 0
+		if defender.status_runtime != null and defender.status_runtime.has_effect("burn"):
+			defender.remove_status("burn")
+			burn_consumed = 1
+		var beam_attack: Dictionary = attack.duplicate(true)
+		beam_attack["type"] = "strike"
+		beam_attack["style"] = "ember_beam"
+		beam_attack["dmg"] = 150.0 + 32.0 * float(total_fire) + 50.0 * float(burn_consumed)
+		beam_attack["guard"] = 48.0 + 12.0 * float(total_fire)
+		beam_attack["knock"] = 5.0
+		beam_attack["stun"] = 0.55
+		beam_attack["heavy"] = true
+		beam_attack["apply_status"] = "burn"
+		beam_attack["status_duration"] = 4.0
+		apply_hit(caster, defender, beam_attack, caster.atk_power, defender.chest(), direction, true)
+		hit_count += 1
+	fx.number(start_pos + Vector3(0.0, 0.65, 0.0), "ABSOLUTE COMBUSTION", Color("#fff2b5"), 0.85)
+	if hit_count == 0: fx.number(start_pos, "MISS", Color("#ffc9a7"), 0.7)
 
 # FRG19E — real moving snow-puppet summon, not a fake projectile or a strike.
 func _roxy_spawn_puppet(f: Fighter, a: Dictionary) -> void:
@@ -1017,6 +1117,8 @@ func _strike(f: Fighter, a: Dictionary, power: float) -> void:
 			if String(a.get("style", "")) == "nesa_heart_slam" and f.kit == "hammer":
 				at = center
 			_impact(a, at, color, float(a.radius))
+			if f.kit == "mage" and String(f.look.get("element", "")) == "fire" and bool(a.get("fire_patch", false)):
+				_ember_add_patch(f, at, float(a.get("radius", 1.0)))
 			for d in enemies_of(f):
 				var to: Vector3 = d.position - at; to.y = 0
 				if to.length() <= float(a.radius) + d.radius * 0.5 and not d.airborne():
@@ -1078,6 +1180,8 @@ func _impact(a: Dictionary, pos: Vector3, color: Color, radius: float) -> void:
 func _buff(f: Fighter, a: Dictionary) -> void:
 	var pvp: bool = cfg.mode != "survival"
 	match a.mode:
+		"ember_ignition": # FRG19N: consume owned ground fire and an active burn
+			_ember_absolute_combustion(f, a)
 		"aster_judgment": # FRG19K — temporary damage and sword speed transformation
 			if f.kit == "knight" and String(f.look.get("element", "")) == "light":
 				f.aster_judgment_t = float(a.get("duration", 10.0))

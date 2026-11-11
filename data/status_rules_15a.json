@@ -141,6 +141,14 @@
       "category": "buff",
       "modifiers": {},
       "hot_hp_fraction_per_second": 0.0025
+    },
+    "burn": {
+      "label": "Burn",
+      "category": "debuff",
+      "max_stacks": 1,
+      "duration": 4.0,
+      "dot_hp_fraction_per_second": 0.008,
+      "modifiers": {}
     }
   }
 }

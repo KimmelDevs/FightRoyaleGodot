@@ -1,0 +1,6 @@
+19N — Ember Flame Witch
+Basic bolts -15% damage; heavy explosion 155 and radius 1.05; Flame Burst 95; five Fireball Volley bolts at 31; Meteor 215.
+Heavy and Meteor leave 20-second fire patches; max 4 per Ember, burning victims who remain on them.
+Absolute Combustion consumes nearby own fire patches and burns before dealing a directional beam hit.
+Patch count visible in HUD; projectiles and other fighters are unchanged.
+Actual Godot engine playtest NOT performed.

@@ -1,0 +1,21 @@
+{
+  "version": "19N.1",
+  "character": "ember",
+  "state": "FIRST PLAYABLE REFINEMENT",
+  "source": "https://raw.githubusercontent.com/KimmelDevs/Fight-Royale/main/web/src/game/kits.ts",
+  "completed": [
+    "reduced mage fire basic damage",
+    "reduced heavy, Z, X and C damage to browser values",
+    "20-second burning patches on heavy and Meteor, four per Ember",
+    "burn debuff on confirmed Z/X/C hit and patch exposure",
+    "Absolute Combustion beam consumes Ember's nearby patches and target burn",
+    "patch count shown in HUD",
+    "reset of patches between rounds and no ticking during pause"
+  ],
+  "pending": [
+    "longer custom beam choreography and VFX",
+    "exact browser collision and scaling parity",
+    "Godot engine playtest"
+  ],
+  "notes": "Ember's existing VRM, staff, mage animation set and character ID are preserved. No shop or other modes added."
+}
