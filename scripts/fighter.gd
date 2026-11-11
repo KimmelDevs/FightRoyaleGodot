@@ -92,6 +92,9 @@ var nesa_counter_max_cd := 0.0
 # FRG19C Kaizen: target captured by a confirmed Predator's Hook contact.
 var kaizen_bound_target: Fighter = null
 var kaizen_bind_seconds := 0.0
+# FRG19F Zenith - +0.01 action speed per real damage event, 14-stack cap.
+var zenith_magnetic_stacks := 0
+var zenith_magnetic_timer := 0.0
 var zarek_momentum := 0  # FRG19B projectile-destroy Clash Momentum
 var _fatigue_decay := 3.0
 var move_speed := 3.2
@@ -225,6 +228,10 @@ func remove_status(effect_id: String) -> void:
 		status_runtime.clear_effect(effect_id)
 
 func notify_passive_event(event_id: String, other: Node = null) -> void:
+	# FRG19F: ONLY landed damaging hits grant the iron sovereign momentum.
+	if kit == "glaive" and String(look.get("element", "")) == "metal" and event_id == "landed_hit":
+		zenith_magnetic_stacks = mini(zenith_magnetic_stacks + 1, 14)
+		zenith_magnetic_timer = 5.0
 
 	# FRG19B: only real projectile destroys earn Zarek's Clash Momentum.
 	if kit == "glaive" and String(look.get("element", "")) == "storm" and event_id == "projectile_destroyed":
@@ -236,6 +243,8 @@ func status_summary() -> String:
 	var summary: String = status_runtime.short_label() if status_runtime != null else ""
 	if kit == "glaive" and zarek_momentum > 0:
 		return "Momentum x%d" % zarek_momentum if summary.is_empty() else "Momentum x%d, %s" % [zarek_momentum, summary]
+	if kit == "glaive" and String(look.get("element", "")) == "metal" and zenith_magnetic_stacks > 0:
+		return "Magnetic x%d" % zenith_magnetic_stacks if summary.is_empty() else "Magnetic x%d, %s" % [zenith_magnetic_stacks, summary]
 	return summary
 
 # FRG15D - status HUD and countdown indicators
@@ -316,6 +325,11 @@ func tick(dt: float) -> void:
 		if roxy_aegis_t <= 0.0:
 			roxy_aegis_charges = 0
 	roxy_freeze_cd = maxf(0.0, roxy_freeze_cd - dt)
+	# FRG19F Zenith: consecutive landed hits refresh the 5s charge duration.
+	if zenith_magnetic_timer > 0.0:
+		zenith_magnetic_timer = maxf(0.0, zenith_magnetic_timer - dt)
+		if zenith_magnetic_timer <= 0.0:
+			zenith_magnetic_stacks = 0
 	rage_t = maxf(rage_t - dt, 0.0)
 	counter_t = maxf(counter_t - dt, 0.0)
 
@@ -365,7 +379,8 @@ func add_guard_fatigue() -> void:
 func attack_time_multiplier() -> float:
 	# Each stack makes attack/skill execution 2% slower; maximum 10 stacks.
 	var factor: float = 1.0 + 0.20 * float(mini(zarek_momentum, 5)) if kit == "glaive" and atk_id.begins_with("l") else 1.0
-	return (1.0 / maxf(1.0 - 0.02 * float(guard_fatigue), 0.5)) * status_runtime.attack_time_multiplier() / factor
+	var metal_factor: float = 1.0 + 0.01 * float(zenith_magnetic_stacks) if kit == "glaive" and String(look.get("element", "")) == "metal" else 1.0
+	return (1.0 / maxf(1.0 - 0.02 * float(guard_fatigue), 0.5)) * status_runtime.attack_time_multiplier() / (factor * metal_factor)
 
 ## True throughout the *entire* damaging window, not just on the first active frame.
 func active_melee() -> bool:

@@ -1,0 +1,7 @@
+Fight Royale Update 19F — Zenith Iron Sovereign
+Requires 19E. Adds fully selectable Zenith without touching Zarek.
+Run Godot editor once to import models/zenith.vrm after adding it.
+First playable pass: real timed contact, 5 spear basics, Z/X/C/V and magnetic charge.
+Uses glaive pose aliases until unique Zenith animations are baked in.
+Manual recall, magnetic polarities and source-accurate V protective bloom need refinement.
+No shop, online, survival or team-mode updates.

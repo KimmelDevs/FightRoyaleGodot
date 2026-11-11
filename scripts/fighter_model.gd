@@ -302,18 +302,33 @@ func _build_weapons() -> void:
 			cast_point = blade_tip
 			shield_node = l
 
-		"glaive": # FRG19B — original double-ended Storm Glaive (right hand)
-			var shaft := _pivot(r)
-			_part(shaft, _cyl(0.018, 0.018, 1.38, 16), _mat(L.metal, true), Vector3(0, 0, 0))
-			_part(shaft, _cyl(0.027, 0.027, 0.24, 12), _mat(L.band), Vector3(0, 0.03, 0))
-			for sign in [-1.0, 1.0]:
-				_part(shaft, _box(0.09, 0.37, 0.021), steel, Vector3(0, sign * 0.86, 0))
-				_part(shaft, _box(0.025, 0.28, 0.025), glow, Vector3(0, sign * 0.86, 0))
-				_part(shaft, _cyl(0.0 if sign > 0.0 else 0.045, 0.045 if sign > 0.0 else 0.0, 0.22, 12), steel, Vector3(0, sign * 1.13, 0))
-			blade_base = _pivot(shaft, Vector3(0, 0.55, 0))
-			blade_tip = _pivot(shaft, Vector3(0, 1.27, 0))
-			cast_point = blade_tip
-			shield_node = l
+		"glaive": # FRG19B/19F - element-specific polearm designs
+			if String(L.get("element", "")) == "metal":
+				# FRG19F Zenith: SINGLE-TIPPED thrusting spear, not Zarek's double glaive.
+				var spear := _pivot(r, Vector3(0, -0.14, 0))
+				_part(spear, _cyl(0.017, 0.017, 1.92, 14), _mat(L.metal, true), Vector3(0, 0.66, 0))
+				_part(spear, _cyl(0.031, 0.031, 0.22, 12), _mat(L.band), Vector3(0, -0.12, 0))
+				_part(spear, _box(0.20, 0.045, 0.085), trim, Vector3(0, 1.55, 0))
+				_part(spear, _box(0.14, 0.47, 0.065), steel, Vector3(0, 1.80, 0))
+				_part(spear, _box(0.038, 0.38, 0.078), glow, Vector3(0, 1.81, -0.032))
+				_part(spear, _cyl(0.0, 0.062, 0.26, 12), steel, Vector3(0, 2.12, 0))
+				blade_base = _pivot(spear, Vector3(0, 1.20, 0))
+				blade_tip = _pivot(spear, Vector3(0, 2.25, 0))
+				cast_point = blade_tip
+				shield_node = l
+			else:
+				# FRG19B Zarek original double-ended Storm Glaive.
+				var shaft := _pivot(r)
+				_part(shaft, _cyl(0.018, 0.018, 1.38, 16), _mat(L.metal, true), Vector3(0, 0, 0))
+				_part(shaft, _cyl(0.027, 0.027, 0.24, 12), _mat(L.band), Vector3(0, 0.03, 0))
+				for sign in [-1.0, 1.0]:
+					_part(shaft, _box(0.09, 0.37, 0.021), steel, Vector3(0, sign * 0.86, 0))
+					_part(shaft, _box(0.025, 0.28, 0.025), glow, Vector3(0, sign * 0.86, 0))
+					_part(shaft, _cyl(0.0 if sign > 0.0 else 0.045, 0.045 if sign > 0.0 else 0.0, 0.22, 12), steel, Vector3(0, sign * 1.13, 0))
+				blade_base = _pivot(shaft, Vector3(0, 0.55, 0))
+				blade_tip = _pivot(shaft, Vector3(0, 1.27, 0))
+				cast_point = blade_tip
+				shield_node = l
 		"knight":
 			_part(r, _cyl(0.016, 0.018, 0.17), _mat("#5a3a2a"))
 			_part(r, _sph(0.026), trim, Vector3(0, -0.1, 0))

@@ -391,6 +391,10 @@ func _on_swing(f: Fighter) -> void:
 		var tip := f.model.blade_tip.global_position
 		fx.flash(tip, Color("#fff6c8"), 0.26 if big else 0.18, 0.14, 0.7)
 		fx.sparks(tip, Color("#fff2b0"), 18 if big else 8, 4.0)
+	if f.kit == "glaive" and String(f.look.get("element", "")) == "metal":
+		match String(a.get("style", "")):
+			"zenith_barrage": _zenith_barrage(f, a)
+			"zenith_arsenal": _zenith_arsenal(f, a); return
 	match a.type:
 		"projectile": _fire(f, a)
 		"strike": _strike(f, a, f.atk_power)
@@ -464,6 +468,76 @@ func _roxy_step_puppets(dt: float) -> void:
 			puppet.queue_free()
 			_roxy_puppets.erase(record)
 
+
+# FRG19F — 17 visual spear sentinels; 12 outward shots and 2 final rails.
+# Kept distinct from Zarek's glaive V; all delayed events are tied to the round.
+func _zenith_spear_projectile(f: Fighter, attack: Dictionary, offset: float, speed: float) -> void:
+	if not is_instance_valid(f) or f.is_down() or round_over:
+		return
+	var origin: Vector3 = f.model.cast_point.global_position
+	var opponent = f.opponent
+	var aim: Vector3 = opponent.chest() - origin if is_instance_valid(opponent) and not opponent.is_down() else f.forward()
+	var direction := aim.normalized().rotated(Vector3.UP, offset)
+	_spawn_projectile(f, attack, f.atk_power, origin, direction * speed, Color(f.look.glow), opponent)
+
+func _zenith_barrage(f: Fighter, a: Dictionary) -> void:
+	var rnd: int = _round
+	for i in range(3):
+		var shot: Dictionary = a.duplicate(true)
+		shot["type"] = "projectile"
+		shot["style"] = "zenith_spear"
+		shot["dmg"] = 24.0
+		shot["guard"] = 9.0
+		shot["pierce"] = false
+		shot["size"] = 0.8
+		shot["speed"] = 22.0
+		var angle: float = (float(i) - 1.0) * 0.13
+		later(0.23 + float(i) * 0.14, func():
+			if rnd == _round and is_instance_valid(f) and not f.is_down():
+				_zenith_spear_projectile(f, shot, angle, 22.0))
+
+func _zenith_arsenal(f: Fighter, a: Dictionary) -> void:
+	var rnd: int = _round
+	var bloom := Node3D.new()
+	bloom.name = "ZenithMetalBloom19F"
+	f.add_child(bloom)
+	bloom.position = Vector3(0.0, 1.15, 0.0)
+	var material := Fx.unlit(Color("#c5fff1"), 0.95, true)
+	for i in range(17):
+		var spear := MeshInstance3D.new()
+		var blade := BoxMesh.new()
+		blade.size = Vector3(0.055, 0.055, 0.85)
+		spear.mesh = blade
+		spear.material_override = material
+		var a_rad: float = TAU * float(i) / 17.0
+		spear.position = Vector3(cos(a_rad) * 1.4, sin(a_rad * 2.0) * 0.22, sin(a_rad) * 1.4)
+		spear.rotation.y = -a_rad
+		bloom.add_child(spear)
+	fx.ring(f.position, Color("#bbffe8"), 2.1, 0.32, 0.84)
+	later(1.25, func():
+		if is_instance_valid(bloom): bloom.queue_free())
+	for i in range(12):
+		var shot: Dictionary = a.duplicate(true)
+		shot["style"] = "zenith_spear"
+		shot["dmg"] = 21.5
+		shot["guard"] = 8.0
+		shot["size"] = 0.8
+		shot["pierce"] = false
+		var angle: float = (float(i) - 5.5) * 0.072
+		later(0.07 + float(i) * 0.085, func():
+			if rnd == _round and is_instance_valid(f) and not f.is_down():
+				_zenith_spear_projectile(f, shot, angle, 17.0))
+	for i in range(2):
+		var finisher: Dictionary = a.duplicate(true)
+		finisher["style"] = "zenith_finisher"
+		finisher["dmg"] = 43.0
+		finisher["size"] = 1.15
+		finisher["pierce"] = true
+		var angle: float = -0.055 if i == 0 else 0.055
+		later(1.06 + float(i) * 0.13, func():
+			if rnd == _round and is_instance_valid(f) and not f.is_down():
+				_zenith_spear_projectile(f, finisher, angle, 23.0))
+
 func _active_melee_contact(f: Fighter) -> void:
 	_melee(f, f.atk)
 
@@ -525,6 +599,10 @@ const PROJECTILE_TRAIL_SAMPLES := 8
 
 func _projectile_shape(style: String, size: float) -> Mesh:
 	match style:
+		"zenith_rail", "zenith_heavy", "zenith_spear", "zenith_finisher":
+			var spear := BoxMesh.new()
+			spear.size = Vector3(0.08, 0.09, 0.78) * size
+			return spear
 		"arrow":
 			var arrow := BoxMesh.new()
 			arrow.size = Vector3(0.05, 0.05, 0.70) * size

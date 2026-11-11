@@ -1,0 +1,26 @@
+{
+  "version": "19F.1",
+  "fighter": "zenith",
+  "browser_reference": "https://raw.githubusercontent.com/KimmelDevs/Fight-Royale/main/web/src/game/kits.ts",
+  "status": "FIRST PLAYABLE PASS, NOT FULL SOURCE PARITY",
+  "implemented": [
+    "single-tip metal spear visual",
+    "five-hit light combo",
+    "five-contact Phantom Fang with total 51 damage",
+    "Magnetic Lance charged projectile",
+    "piercing Rail Spear throw",
+    "five-thrust barrage and three independently timed spears",
+    "Spearstep dash strike",
+    "Sovereign Arsenal 17 visual spears, 12 live shots and 2 finisher projectiles",
+    "Magnetic Charge +0.01 action speed per damaging hit up to 14 stacks (5 second reset)"
+  ],
+  "refinements_pending": [
+    "manual spear recall and physical throw/return path",
+    "Positive/Negative polarity pull and repel mechanics",
+    "correct source-authored Zenith-specific bone poses",
+    "V protective CC immunity and spear intercept behavior",
+    "V camera choreography",
+    "spear vs twin-blade speed modes",
+    "character AI behavior verification and runtime balance testing"
+  ]
+}

@@ -789,5 +789,43 @@
       "shield": "#9cddff",
       "emblem": "#e8f8ff"
     }
+  },
+  {
+    "id": "zenith",
+    "title": "Iron Sovereign",
+    "role": "Magnetic Spear Duelist",
+    "desc": "Metal spear specialist with rapid thrusts, magnetic charge, spearstep and sovereign arsenal.",
+    "stats": {
+      "power": 4,
+      "speed": 4,
+      "range": 4,
+      "defense": 3
+    },
+    "look": {
+      "name": "Zenith",
+      "body": "f",
+      "vrm": "zenith",
+      "kit": "glaive",
+      "element": "metal",
+      "outfit": "knight",
+      "style": "long",
+      "hat": "none",
+      "hair": "#b8dfca",
+      "hair_shade": "#79bba1",
+      "iris_top": "#2a9b7b",
+      "iris_bottom": "#a2fae6",
+      "eye_dark": "#103d38",
+      "tunic": "#26383c",
+      "band": "#a7cebf",
+      "pants": "#1a2932",
+      "boots": "#22333b",
+      "metal": "#d5f0e8",
+      "trim": "#84e0c2",
+      "cape": "#34565b",
+      "cape_bottom": "#96d6bd",
+      "glow": "#b5ffdf",
+      "shield": "#2a5953",
+      "emblem": "#c8fbe6"
+    }
   }
 ]
