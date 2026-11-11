@@ -305,7 +305,18 @@ func _build_weapons() -> void:
 	var r: Node3D = WeaponMount.configure_grip(_grip("Right"), mount_profile, "right")
 	var l: Node3D = WeaponMount.configure_grip(_grip("Left"), mount_profile, "left")
 	match kit:
-
+		"bomb": # FRG19S: two-handed grenade maker; no magic staff.
+			var right_bomb := _pivot(r, Vector3(0, 0.12, 0))
+			_part(right_bomb, _sph(0.095), _mat(L.metal, true), Vector3.ZERO)
+			_part(right_bomb, _cyl(0.034, 0.034, 0.065, 12), trim, Vector3(0, 0.11, 0))
+			_part(right_bomb, _box(0.022, 0.10, 0.022), glow, Vector3(0.025, 0.17, 0))
+			var pouch := _pivot(l, Vector3(-0.03, -0.06, 0))
+			_part(pouch, _box(0.18, 0.16, 0.13), _mat(L.band), Vector3(0, 0.04, 0))
+			_part(pouch, _box(0.19, 0.045, 0.15), trim, Vector3(0, 0.13, 0))
+			blade_base = right_bomb
+			blade_tip = _pivot(right_bomb, Vector3(0, 0.18, 0))
+			cast_point = _pivot(r, Vector3(0, 0.19, 0.06))
+			shield_node = l
 
 		"tristaff": # FRG19G — visible sanjiekun, three rods and two linked joints
 			var root := _pivot(r, Vector3(0, -0.16, 0))

@@ -1,0 +1,20 @@
+{
+  "version": "19S.1",
+  "fighter": "bob",
+  "name": "Bob / Mad Bomber",
+  "source": "https://raw.githubusercontent.com/KimmelDevs/Fight-Royale/main/web/src/game/kits.ts",
+  "status": "FIRST PLAYABLE PORT — runtime Godot validation still required",
+  "details": [
+    "3 throwing attacks plus charged bomb",
+    "Z: stored mine charges 4 (two active maximum)",
+    "X: Paralyze Bomb on real damage",
+    "C: planted Powder Keg with remote recast and enemy attack trigger",
+    "V: four distinct cluster blasts",
+    "Round-scoped cleanup and visible bomb actors"
+  ],
+  "pending": [
+    "Unique Bob VRM and per-joint throw animations",
+    "Exact browser charge recharge UI",
+    "Godot gameplay smoke test"
+  ]
+}

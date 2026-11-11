@@ -11,7 +11,7 @@ const PRESETS := [
 	{"block": 0.5, "parry": 0.14, "jump": 0.3, "react": [0.12, 0.26], "think": 1.0, "skill": [1.2, 2.6], "combo": 4},
 	{"block": 0.65, "parry": 0.3, "jump": 0.45, "react": [0.08, 0.16], "think": 0.7, "skill": [0.8, 1.6], "combo": 5},
 ]
-const RANGED := ["mage", "bow"]
+const RANGED := ["mage", "bow", "bomb"] # FRG19S
 # FRG13A - fighter-specific AI personality profiles
 const PERSONALITY_FILE := "res://data/ai_personalities.json"
 # FRG13B - tactical identity (guard reset, pressure and skill bias)
@@ -435,8 +435,12 @@ func _usable_skill(f: Fighter, o: Fighter, key: String, dist: float) -> bool:
 	match String(a.get("type", "")):
 		"melee":
 			return dist <= float(a.get("reach", 2.0)) + 0.65
-		"projectile":
+		"projectile", "lob":
 			return dist >= 1.1 and dist < 10.5
+		"mine":
+			return dist < 5.2 and f.bob_mine_charges > 0
+		"barrel":
+			return dist < 6.5
 		"strike":
 			if String(a.get("at", "target")) == "self":
 				return dist <= float(a.get("radius", 1.5)) + 0.6
@@ -474,8 +478,12 @@ func _select_tactical_skill(f: Fighter, o: Fighter, dist: float) -> String:
 				score += 0.55 if dist <= reach else 0.10
 				if enemy_open: score += 0.75
 				if o.state == Fighter.S.BLOCK: score += 0.18
-			"projectile":
+			"projectile", "lob":
 				score += 0.55 if dist > 3.0 else 0.05
+			"mine":
+				score += 0.65 if dist < 3.4 else 0.30
+			"barrel":
+				score += 0.80 if dist < 4.0 else 0.20
 				if enemy_open: score += 0.25
 			"strike":
 				var self_centered: bool = String(ability.get("at", "target")) == "self"

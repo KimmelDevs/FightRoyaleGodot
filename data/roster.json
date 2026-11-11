@@ -979,5 +979,43 @@
       "shield": "#572735",
       "emblem": "#ff465d"
     }
+  },
+  {
+    "id": "bob",
+    "title": "Mad Bomber",
+    "role": "Explosives - Trap Specialist",
+    "desc": "Lobbed firecrackers, stored land mines, paralyzing bombs, a remote powder keg, and a four-blast cluster.",
+    "stats": {
+      "power": 4,
+      "speed": 3,
+      "range": 5,
+      "defense": 2
+    },
+    "look": {
+      "name": "Bob",
+      "body": "m",
+      "vrm": "bob",
+      "kit": "bomb",
+      "element": "blast",
+      "outfit": "mage",
+      "style": "messy",
+      "hat": "goggles",
+      "hair": "#65402f",
+      "hair_shade": "#a86b35",
+      "iris_top": "#f5a623",
+      "iris_bottom": "#ffd46e",
+      "eye_dark": "#503019",
+      "tunic": "#a45427",
+      "band": "#f2b651",
+      "pants": "#352a35",
+      "boots": "#322522",
+      "metal": "#d7b78c",
+      "trim": "#ffce71",
+      "cape": "#5d3029",
+      "cape_bottom": "#b25528",
+      "glow": "#ff9e35",
+      "shield": "#71523b",
+      "emblem": "#f7d45e"
+    }
   }
 ]

@@ -32,6 +32,10 @@ var _time := 0.0
 var _round := 0
 var _timers: Array = []         # [time, Callable]
 var _projectiles: Array = []    # dictionaries
+# FRG19S — Bob's round-scoped bomb actors; never survive a restart.
+var _bob_lobs: Array[Dictionary] = []
+var _bob_mines: Array[Dictionary] = []
+var _bob_kegs: Array[Dictionary] = []
 var _strike_marks: Array = []   # {target, land, id}
 
 # FRG19E — snow puppets live only for their current round.
@@ -143,6 +147,10 @@ func start_round() -> void:
 	for p in _projectiles:
 		if is_instance_valid(p.node):
 			p.node.queue_free()
+	# FRG19S: remove all bombs, mines and kegs before changing rounds.
+	for rec in _bob_lobs + _bob_mines + _bob_kegs:
+		if is_instance_valid(rec.get("node")): rec["node"].queue_free()
+	_bob_lobs.clear(); _bob_mines.clear(); _bob_kegs.clear()
 	for f in fighters: f.queue_free()
 	for t in _trails.values(): t.queue_free()
 	for puppet in _roxy_puppets:
@@ -231,7 +239,7 @@ func _spawn(slot: Dictionary, team: int, pos: Vector3) -> Fighter:
 		tr.configure(String(f.kit), String(f.look.get("element", "")))
 		add_child(tr)
 		_trails[f] = tr
-	if String(slot.peer).begins_with("cpu"): f.auto_approach = not f.kit in ["mage", "bow"]
+	if String(slot.peer).begins_with("cpu"): f.auto_approach = not f.kit in ["mage", "bow", "bomb"] # FRG19S
 	if slot.peer == cfg.local_peer: local = f
 	return f
 
@@ -342,6 +350,10 @@ func _process(real_dt: float) -> void:
 		# Zero-delta brain calls can still schedule attacks; pause must freeze AI.
 		if dt > 0.0:
 			f.tick(dt)
+			# FRG19S: remote keg input is sampled after the player's/CPU's brain runs.
+			if f.kit == "bomb" and f.bob_barrel_request:
+				f.bob_barrel_request = false
+				_bob_detonate_keg(f)
 			# FRG19L: subtle heavy footsteps with 3 Resolve; no simulation while paused.
 			if f.kit == "greatsword" and f.garrick_resolve >= 3 and f.on_ground and f.model != null and f.model.walk > 0.25 and f.garrick_crack_cooldown <= 0.0:
 				fx.rocks(f.position, 5, 0.25)
@@ -355,6 +367,7 @@ func _process(real_dt: float) -> void:
 			_trails[f].emitting = f.trail_on()
 			_trails[f].tick(dt)
 	_update_projectiles(dt)
+	_bob_step(dt) # FRG19S: real-time bomb travel and armed trap checks.
 	_roxy_step_puppets(dt)
 	_ember_step_patches(dt) # FRG19N: no burning-ground ticks during pause
 	_marina_step_pools(dt) # FRG19P: heal only while simulation advances
@@ -423,6 +436,9 @@ func _on_swing(f: Fighter) -> void:
 		_kira_phantom_step(f, a)
 		return
 	match a.type:
+		"lob": _bob_throw(f, a, f.atk_power) # FRG19S
+		"mine": _bob_place_mine(f, a, f.atk_power)
+		"barrel": _bob_plant_keg(f, a, f.atk_power)
 		"projectile": _fire(f, a)
 		"strike": _strike(f, a, f.atk_power)
 		"buff": _buff(f, a)
@@ -1144,6 +1160,200 @@ func _update_projectiles(dt: float) -> void:
 			node.queue_free()
 			_projectiles.erase(p)
 
+# FRG19S — Bob's bomb objects. Independent of ordinary projectile clashes,
+# explosions occur at the recorded landing position and can be dodged/guarded.
+func _bob_prop(radius: float, color: Color, kind: String) -> Node3D:
+    var node := Node3D.new()
+    node.name = "Bob" + kind
+    add_child(node)
+    var shell := MeshInstance3D.new()
+    var ball := SphereMesh.new()
+    ball.radius = radius
+    ball.height = radius * 2.0
+    shell.mesh = ball
+    shell.material_override = Fx.unlit(color)
+    node.add_child(shell)
+    var fuse := MeshInstance3D.new()
+    var fuse_mesh := CylinderMesh.new()
+    fuse_mesh.height = 0.13
+    fuse_mesh.top_radius = 0.027
+    fuse_mesh.bottom_radius = 0.027
+    fuse.mesh = fuse_mesh
+    fuse.position = Vector3(0, radius + 0.05, 0)
+    fuse.material_override = Fx.unlit(Color("#ffe29c"))
+    node.add_child(fuse)
+    return node
+
+func _bob_throw(f: Fighter, a: Dictionary, power: float) -> void:
+    if f.is_down() or round_over: return
+    var destination: Vector3 = f.opponent.position if f.opponent != null else f.position + f.forward() * 4.0
+    destination.y = 0.05
+    var offset: Vector3 = destination - f.position
+    offset.y = 0.0
+    if offset.length() > 8.5: destination = f.position + offset.normalized() * 8.5
+    var is_cluster: bool = String(a.get("style", "")) == "clusterbomb"
+    var count: int = 4 if is_cluster else maxi(1, int(a.get("count", 1)))
+    var base_delay: float = maxf(0.15, float(a.get("delay", 0.65)))
+    if is_cluster: fx.telegraph(destination, Color("#ffa047"), float(a.get("radius", 1.5)) * 2.0, base_delay + 0.36)
+    for i in range(count):
+        var scatter := Vector3.ZERO
+        if is_cluster:
+            scatter = Vector3(cos(TAU * float(i) / 4.0), 0, sin(TAU * float(i) / 4.0)) * 0.82
+        elif count > 1:
+            scatter = Vector3(float(i) - float(count - 1) * 0.5, 0, 0) * float(a.get("spread", .35)) * 2.0
+        var landing: Vector3 = destination + scatter
+        landing.y = 0.05
+        var launch: Vector3 = f.chest() + f.forward() * 0.3
+        var orb := _bob_prop(0.085 * float(a.get("size", 1.0)), Color("#ea9537"), "Lob19S")
+        orb.global_position = launch
+        var travel: float = base_delay + (float(i) * float(a.get("interval", .12)) if is_cluster else 0.0)
+        _bob_lobs.append({"node":orb, "owner":f, "from":launch, "to":landing,
+            "flight":0.0, "duration":travel, "atk":a.duplicate(true), "power":power})
+    fx.flash(f.chest(), Color("#ffbd6b"), 0.25, 0.12, 0.7)
+
+func _bob_place_mine(f: Fighter, a: Dictionary, power: float) -> void:
+    if f.is_down() or f.bob_mine_charges <= 0: return
+    f.bob_mine_charges -= 1
+    if f.bob_mine_charges == 3 and f.bob_mine_recharge <= 0.0: f.bob_mine_recharge = 8.0
+    # Additional charges can be used immediately; the replenishment timer is independent.
+    f.cooldowns[f.atk_id] = 0.0
+    var owned: Array[Dictionary] = []
+    for rec in _bob_mines:
+        if rec.get("owner") == f: owned.append(rec)
+    if owned.size() >= 2:
+        var oldest: Dictionary = owned[0]
+        if is_instance_valid(oldest.get("node")): oldest["node"].queue_free()
+        _bob_mines.erase(oldest)
+    var mine := _bob_prop(0.17, Color("#db713c"), "Mine19S")
+    mine.scale.y = 0.43
+    mine.global_position = Vector3(f.position.x, 0.09, f.position.z)
+    _bob_mines.append({"node":mine, "owner":f, "team":f.team, "atk":a.duplicate(true),
+        "power":power, "arm":0.5, "life":30.0})
+    fx.ring(mine.global_position, Color("#ffb552"), 0.7, 0.24, 0.7)
+
+func _bob_plant_keg(f: Fighter, a: Dictionary, power: float) -> void:
+    if f.is_down() or f.bob_barrel_active: return
+    var keg := Node3D.new()
+    keg.name = "BobPowderKeg19S"
+    add_child(keg)
+    var barrel := MeshInstance3D.new()
+    var cylinder := CylinderMesh.new()
+    cylinder.top_radius = .27
+    cylinder.bottom_radius = .27
+    cylinder.height = .66
+    barrel.mesh = cylinder
+    barrel.material_override = Fx.unlit(Color("#70432e"))
+    keg.add_child(barrel)
+    var band := MeshInstance3D.new()
+    var band_mesh := CylinderMesh.new()
+    band_mesh.top_radius = .28
+    band_mesh.bottom_radius = .28
+    band_mesh.height = .10
+    band.mesh = band_mesh
+    band.position.y = .18
+    band.material_override = Fx.unlit(Color("#dba85e"))
+    keg.add_child(band)
+    keg.global_position = f.position + f.forward() * 1.0 + Vector3(0, .35, 0)
+    _bob_kegs.append({"node":keg, "owner":f, "team":f.team, "atk":a.duplicate(true),
+        "power":power, "life":20.0})
+    f.bob_barrel_active = true
+    f.bob_barrel_skill_key = f.atk_id
+    f.cooldowns[f.atk_id] = 0.0  # cooldown starts on detonation, not placement
+    fx.ring(keg.global_position, Color("#f4b45b"), 1.0, .30, .8)
+
+func _bob_detonate_keg(f: Fighter) -> void:
+    for rec in _bob_kegs.duplicate():
+        if rec.get("owner") != f: continue
+        _bob_explode_at(f, rec["atk"], float(rec["power"]), rec["node"].global_position)
+        if is_instance_valid(rec.get("node")): rec["node"].queue_free()
+        _bob_kegs.erase(rec)
+        f.bob_barrel_active = false
+        if not f.bob_barrel_skill_key.is_empty():
+            f.cooldowns[f.bob_barrel_skill_key] = float(rec["atk"].get("cd", 18.0)) * f.cd_mult
+        f.bob_barrel_skill_key = ""
+        return
+
+func _bob_explode_at(owner: Fighter, atk: Dictionary, power: float, pos: Vector3) -> void:
+    if not is_instance_valid(owner) or owner.is_down() or round_over: return
+    var center := Vector3(pos.x, 0.0, pos.z)
+    var radius := float(atk.get("radius", 1.2))
+    _impact(atk, center, Color("#ff9e3d"), radius)
+    for d in enemies_of(owner):
+        if not is_instance_valid(d) or d.is_down(): continue
+        var to: Vector3 = d.position - center
+        to.y = 0.0
+        if to.length() > radius + d.radius * .5 or d.airborne(): continue
+        var direction: Vector3 = to.normalized() if to.length() > .05 else owner.forward()
+        apply_hit(owner, d, atk, power, d.chest(), direction, true)
+
+func _bob_step(dt: float) -> void:
+    if dt <= 0.0 or round_over: return
+    for rec in _bob_lobs.duplicate():
+        var node: Node3D = rec["node"]
+        var owner: Fighter = rec["owner"]
+        if not is_instance_valid(node) or not is_instance_valid(owner) or owner.is_down():
+            if is_instance_valid(node): node.queue_free()
+            _bob_lobs.erase(rec)
+            continue
+        rec["flight"] = float(rec["flight"]) + dt
+        var duration: float = maxf(.01, float(rec["duration"]))
+        var t: float = clampf(float(rec["flight"]) / duration, 0.0, 1.0)
+        node.global_position = rec["from"].lerp(rec["to"], t) + Vector3(0, 2.0 * sin(PI * t), 0)
+        node.rotation.z += dt * 4.0
+        if t >= 1.0:
+            _bob_explode_at(owner, rec["atk"], float(rec["power"]), rec["to"])
+            node.queue_free()
+            _bob_lobs.erase(rec)
+    for rec in _bob_mines.duplicate():
+        var node: Node3D = rec["node"]
+        var owner: Fighter = rec["owner"]
+        if not is_instance_valid(node) or not is_instance_valid(owner) or owner.is_down():
+            if is_instance_valid(node): node.queue_free()
+            _bob_mines.erase(rec)
+            continue
+        rec["arm"] = float(rec["arm"]) - dt
+        rec["life"] = float(rec["life"]) - dt
+        if float(rec["life"]) <= 0.0:
+            node.queue_free()
+            _bob_mines.erase(rec)
+            continue
+        if float(rec["arm"]) > 0.0: continue
+        for d in enemies_of(owner):
+            if d.position.distance_to(node.global_position) > float(rec["atk"].get("radius", 1.2)): continue
+            _bob_explode_at(owner, rec["atk"], float(rec["power"]), node.global_position)
+            node.queue_free()
+            _bob_mines.erase(rec)
+            break
+    for rec in _bob_kegs.duplicate():
+        var node: Node3D = rec["node"]
+        var owner: Fighter = rec["owner"]
+        if not is_instance_valid(node) or not is_instance_valid(owner) or owner.is_down():
+            if is_instance_valid(owner):
+                owner.bob_barrel_active = false
+                owner.bob_barrel_skill_key = ""
+            if is_instance_valid(node): node.queue_free()
+            _bob_kegs.erase(rec)
+            continue
+        rec["life"] = float(rec["life"]) - dt
+        var triggered: bool = float(rec["life"]) <= 0.0
+        if not triggered:
+            for d in enemies_of(owner):
+                var flat: Vector3 = d.position - node.global_position
+                flat.y = 0.0
+                if d.active_melee() and flat.length() < float(d.atk.get("reach", 1.5)) + .25:
+                    triggered = true
+                    break
+        if not triggered:
+            for p in _projectiles.duplicate():
+                if int(p.get("team", -1)) == owner.team: continue
+                if not is_instance_valid(p.get("node")): continue
+                if p["node"].global_position.distance_to(node.global_position) > .58: continue
+                p["node"].queue_free()
+                _projectiles.erase(p)
+                triggered = true
+                break
+        if triggered: _bob_detonate_keg(owner)
+
 # FRG19R — Phantom Step: staggerable, 3 independent timed kicks.
 # Each strike repositions Kira behind her CURRENT opponent, but an interrupted
 # cast cannot continue after knockdown, KO, or a new attack; no guaranteed damage.
@@ -1229,7 +1439,7 @@ func _strike(f: Fighter, a: Dictionary, power: float) -> void:
 func _impact(a: Dictionary, pos: Vector3, color: Color, radius: float) -> void:
 	var g := Vector3(pos.x, 0, pos.z)
 	match a.style:
-		"explosion", "meteor":
+		"explosion", "meteor", "bomb", "clusterbomb", "mine", "powder_keg":
 			fx.explosion(g, color, radius); add_trauma(0.35 if a.style == "explosion" else 0.6)
 		"lightning":
 			fx.flash(g + Vector3(0, 0.4, 0), Color("#fff2b0"), radius * 0.6, 0.15, 0.9)
@@ -1263,7 +1473,7 @@ func _impact(a: Dictionary, pos: Vector3, color: Color, radius: float) -> void:
 	var style_sound := String(a.get("style", ""))
 	var element_sound := String(a.get("element", ""))
 	var cue := "skill_impact"
-	if style_sound in ["explosion", "meteor"]:
+	if style_sound in ["explosion", "meteor", "bomb", "clusterbomb", "mine", "powder_keg"]: # FRG19S
 		cue = "explosion"
 	elif style_sound == "lightning" or element_sound == "lightning":
 		cue = "lightning"

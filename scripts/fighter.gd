@@ -38,7 +38,7 @@ const GROUND_ACCEL := 19.0
 const GROUND_BRAKE := 25.0
 const AIR_CONTROL := 0.45
 const RAGE_MULT := 1.2
-const RANGED_REST := {"mage": 1.2, "bow": 1.3}
+const RANGED_REST := {"mage": 1.2, "bow": 1.3, "bomb": 1.2} # FRG19S
 const STUN_DR_WINDOW := 3.0
 const STUN_DR := 0.6
 # FRG07 - persistent melee contact and directional knockback
@@ -137,6 +137,12 @@ var nyx_ambush_stacks := 0
 var nyx_air_strikes := 0
 # FRG19R — three aerial kicks per jump; resets upon landing.
 var kira_air_strikes := 0
+# FRG19S — Bob: four stored mine charges, a single active powder keg.
+var bob_mine_charges := 4
+var bob_mine_recharge := 0.0
+var bob_barrel_active := false
+var bob_barrel_skill_key := ""
+var bob_barrel_request := false
 var rook_combo_hits := 0
 var rook_best_hits := 0
 var rook_last_hit_at := -99.0
@@ -330,6 +336,11 @@ func notify_passive_event(event_id: String, other: Node = null) -> void:
 		status_runtime.on_event(event_id, other)
 
 func status_summary() -> String:
+	# FRG19S — Bob's remote keg and mine charges are readable in both modes.
+	if kit == "bomb":
+		var btext: String = "MINES %d/4" % bob_mine_charges
+		if bob_barrel_active: btext += " · KEG ARMED"
+		return btext
 	var summary: String = status_runtime.short_label() if status_runtime != null else ""
 	# FRG19Q — Nyx HUD: +2% ranged skill damage per landed Phantom Rush.
 	# FRG19R: Kira can make three distinct airborne kicks per jump.
@@ -453,6 +464,12 @@ func tick(dt: float) -> void:
 		kaizen_bind_seconds = maxf(0.0, kaizen_bind_seconds - dt)
 		if kaizen_bind_seconds <= 0.0 or not is_instance_valid(kaizen_bound_target) or kaizen_bound_target.is_down():
 			kaizen_bound_target = null
+	# FRG19S: restore one stored mine every 8s, up to four.
+	if kit == "bomb" and bob_mine_charges < 4:
+		bob_mine_recharge -= dt
+		if bob_mine_recharge <= 0.0:
+			bob_mine_charges += 1
+			bob_mine_recharge = 8.0 if bob_mine_charges < 4 else 0.0
 	for k in cooldowns: cooldowns[k] = maxf(cooldowns[k] - dt, 0.0)
 	atk_lock = maxf(atk_lock - dt, 0.0)
 	dash_cd = maxf(dash_cd - dt, 0.0)
@@ -683,6 +700,18 @@ func _read_skill(dt: float) -> void:
 		_queued_skill_t = 0.0
 		return
 
+	# FRG19S: pressing the assigned Powder Keg key again requests its explosion.
+	# This bypasses its cooldown only while a placed keg exists; otherwise normal rules apply.
+	if kit == "bomb" and bob_barrel_active and in_skill != "" and in_skill == bob_barrel_skill_key:
+		bob_barrel_request = true
+		in_skill = ""
+		_queued_skill = ""
+		_queued_skill_t = 0.0
+		return
+	if kit == "bomb" and in_skill != "" and attacks.has(in_skill):
+		if String(attacks[in_skill].get("type", "")) == "mine" and bob_mine_charges <= 0:
+			in_skill = ""
+			return
 	# FRG19C: X recast reels a previously bound enemy to Kaizen (even during X cooldown).
 	if kit == "chainblade" and in_skill == "x" and kaizen_bind_seconds > 0.0 and is_instance_valid(kaizen_bound_target):
 		var victim: Fighter = kaizen_bound_target

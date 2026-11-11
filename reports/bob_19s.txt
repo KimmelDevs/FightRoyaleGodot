@@ -1,0 +1,6 @@
+Fight Royale Godot 19S — Bob / Mad Bomber
+Browser kit: Lob, Land Mine, Paralyze Bomb, Powder Keg, Cluster Bomb.
+Two mine placements maximum; four stored charges.
+VRM models/bob.vrm optional; fallback avatar remains visible after import.
+Open the project in Godot editor to import models.
+Python install validated; actual Godot engine validation pending.
