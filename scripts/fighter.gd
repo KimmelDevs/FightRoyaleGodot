@@ -1025,7 +1025,7 @@ func _move(dt: float) -> void:
 		var requested := Vector3.ZERO
 		if steer > 0.0 and in_move.length_squared() > 0.0001:
 			var sprint_now := in_sprint and state == S.IDLE and on_ground
-			var speed := move_speed * (SPRINT_MULT if sprint_now else 1.0) * status_runtime.movement_multiplier()
+			var speed: float = move_speed * (SPRINT_MULT if sprint_now else 1.0) * status_runtime.movement_multiplier()
 			# FRG19L: approaching with 2+ Resolve grants +20% speed, not sideways retreat speed.
 			if kit == "greatsword" and garrick_resolve >= 2 and o != null and not o.is_down() and in_move.normalized().dot(dir) > 0.25:
 				speed *= 1.20

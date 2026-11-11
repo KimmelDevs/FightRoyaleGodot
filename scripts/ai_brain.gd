@@ -557,7 +557,7 @@ func _offense(f: Fighter, o, dt: float) -> void:
 	# Don't throw away attacks outside their actual reach.
 	if dist > reach:
 		return
-	var vulnerable := o.state in [Fighter.S.HITSTUN, Fighter.S.STAGGER]
+	var vulnerable: bool = o.state in [Fighter.S.HITSTUN, Fighter.S.STAGGER]
 	if vulnerable:
 		_think_cd = minf(_think_cd, 0.12)
 	_think_cd -= dt
