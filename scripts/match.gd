@@ -332,6 +332,10 @@ func _process(real_dt: float) -> void:
 		# Zero-delta brain calls can still schedule attacks; pause must freeze AI.
 		if dt > 0.0:
 			f.tick(dt)
+			# FRG19L: subtle heavy footsteps with 3 Resolve; no simulation while paused.
+			if f.kit == "greatsword" and f.garrick_resolve >= 3 and f.on_ground and f.model != null and f.model.walk > 0.25 and f.garrick_crack_cooldown <= 0.0:
+				fx.rocks(f.position, 5, 0.25)
+				f.garrick_crack_cooldown = 0.32
 		# A sword remains dangerous for the entire active window. One contact per
 		# defender/swing is enforced in _melee, so framerate cannot multiply damage.
 		if dt > 0.0 and not round_over and f.active_melee():
@@ -1035,6 +1039,9 @@ func _impact(a: Dictionary, pos: Vector3, color: Color, radius: float) -> void:
 			fx.ring(g, Color("#ff95c1"), radius * 1.3, 0.38, 0.94)
 			fx.flash(g + Vector3(0, 0.7, 0), Color("#ffe1f0"), radius * 0.60, 0.18, 0.88)
 			add_trauma(0.55 if a.style == "nesa_heart_slam" else 0.82)
+		"iron_tempest": # FRG19L: individual greatsword swing contact VFX
+			fx.sparks(g + Vector3(0, 0.9, 0), color, 18, 5.3)
+			fx.ring(g + Vector3(0, 0.65, 0), color, radius * 0.75, 0.18, 0.68)
 		"spin":
 			fx.ring(g + Vector3(0, 1.0, 0), color, radius, 0.2, 0.9)
 		_:
@@ -1149,7 +1156,15 @@ func _blink(f: Fighter, a: Dictionary) -> void:
 	fx.smoke(f.position, Color(f.look.glow))
 
 func apply_hit(attacker, d: Fighter, a: Dictionary, power: float, hit_pos: Vector3, dir: Vector3, ranged: bool) -> void:
-	var result := d.receive_hit(attacker, a, power)
+	# FRG19L: pass per-hit metadata rather than mutating shared attack dictionaries.
+	var incoming_attack: Dictionary = a
+	if ranged and String(a.get("type", "")) == "projectile" and d.kit == "greatsword" and d.garrick_resolve >= 2 and d.opponent != null and not d.opponent.is_down():
+		var approach: Vector3 = d.opponent.position - d.position
+		approach.y = 0.0
+		if approach.length_squared() > 0.01 and d.in_move.length_squared() > 0.01 and d.in_move.normalized().dot(approach.normalized()) > 0.25:
+			incoming_attack = a.duplicate(true)
+			incoming_attack["_garrick_resolve_defense"] = true
+	var result := d.receive_hit(attacker, incoming_attack, power)
 
 	# FRG19E: four landed frost shards freeze, with a brief re-freeze cooldown.
 	if attacker is Fighter and String(attacker.look.get("element", "")) == "frost" and String(a.get("style", "")) == "frost_shard" and result in ["hit", "crit", "ko"]:
@@ -1185,6 +1200,9 @@ func apply_hit(attacker, d: Fighter, a: Dictionary, power: float, hit_pos: Vecto
 			attacker.notify_passive_event("blocked_attack", d)
 	elif result == "parry":
 		d.notify_passive_event("parried", attacker if attacker is Fighter else null)
+		# FRG19L: only projectile parries, never melee parries, build Resolve.
+		if ranged and String(a.get("type", "")) == "projectile":
+			d.notify_passive_event("projectile_parried", attacker if attacker is Fighter else null)
 		if attacker is Fighter:
 			attacker.notify_passive_event("was_parried", d)
 	elif result == "guard_break":

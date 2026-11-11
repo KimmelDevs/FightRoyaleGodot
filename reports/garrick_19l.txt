@@ -1,0 +1,8 @@
+19L — Garrick Iron Vanguard
+Garrick retains his existing VRM and greatsword setup.
+X now emits three separate defendable Iron Tempest pulses. Z causes stagger.
+Resolve gains 1 stack for actual projectile parries or projectile destroys, capped at 3.
+At 2+ stacks: +20% approach speed and 25% projectile damage resistance while advancing.
+At 3 stacks: subtle rock cracks when walking.
+Pending: conditional Titan Cleave follow-up, full multi-cut choreography, aerial targets.
+Godot engine playtest has NOT been performed.

@@ -1,0 +1,21 @@
+{
+  "version": "19L.1",
+  "character": "garrick",
+  "state": "FIRST PLAYABLE REFINEMENT",
+  "source": "https://raw.githubusercontent.com/KimmelDevs/Fight-Royale/main/web/src/game/kits.ts",
+  "completed": [
+    "greatsword extended attack reach",
+    "staggering Ground Slam",
+    "Iron Tempest three independent strike pulses",
+    "Resolve 0-3 only from projectile parries and destroys",
+    "2+ Resolve: 20% bonus approach speed and 25% less projectile HP damage while approaching",
+    "3 Resolve: small footstep rock effects",
+    "HUD Resolve counter"
+  ],
+  "not_yet_ported": [
+    "Titan Cleave hit-confirmed recast overhead finisher",
+    "individual 3-cut choreography and upper-air hit checking",
+    "browser VFX parity"
+  ],
+  "notes": "Existing VRM, weapons and old save IDs remain intact. 19K prerequisite checked."
+}

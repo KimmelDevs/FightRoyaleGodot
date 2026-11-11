@@ -126,6 +126,9 @@ var zephyr_rhythm_stacks := 0
 var zephyr_rhythm_seconds := 0.0
 var zenith_magnetic_stacks := 0
 var zenith_magnetic_timer := 0.0
+# FRG19L — Garrick receives Resolve from confirmed projectile parries/interceptions.
+var garrick_resolve := 0
+var garrick_crack_cooldown := 0.0
 var zarek_momentum := 0  # FRG19B projectile-destroy Clash Momentum
 var _fatigue_decay := 3.0
 var move_speed := 3.2
@@ -279,6 +282,9 @@ func notify_passive_event(event_id: String, other: Node = null) -> void:
 		zenith_magnetic_stacks = mini(zenith_magnetic_stacks + 1, 14)
 		zenith_magnetic_timer = 5.0
 
+	# FRG19L: never award Resolve for a normal melee block/parry.
+	if kit == "greatsword" and event_id in ["projectile_parried", "projectile_destroyed"]:
+		garrick_resolve = mini(3, garrick_resolve + 1)
 	# FRG19B: only real projectile destroys earn Zarek's Clash Momentum.
 	if kit == "glaive" and String(look.get("element", "")) == "storm" and event_id == "projectile_destroyed":
 		zarek_momentum += 1
@@ -313,6 +319,9 @@ func status_summary() -> String:
 		var tag: String = "READ x%d" % renji_reads
 		if renji_reflection_t > 0.0: tag += " · REFLECT %.1fs" % renji_reflection_t
 		return tag if summary.is_empty() else tag + ", " + summary
+	if kit == "greatsword" and garrick_resolve > 0:
+		var resolve_tag: String = "RESOLVE %d/3" % garrick_resolve
+		return resolve_tag if summary.is_empty() else resolve_tag + ", " + summary
 	if kit == "tristaff":
 		var tag: String = ["STAFF", "SPLIT", "WHIP", "FOLDED"][zephyr_mode] + " · Rhythm x%d" % zephyr_rhythm_stacks
 		return tag if summary.is_empty() else tag + ", " + summary
@@ -426,6 +435,9 @@ func tick(dt: float) -> void:
 			hp = maxf(1.0, hp - max_hp * 0.006 * dt)
 		if was_judging and aster_judgment_t <= 0.0 and model != null and model.shield_node != null:
 			model.shield_node.visible = true
+	# FRG19L: timer only advances with active match time.
+	if kit == "greatsword":
+		garrick_crack_cooldown = maxf(0.0, garrick_crack_cooldown - dt)
 	# FRG19I reflection decays in match-time; cannot block manually while active.
 	if kit == "tonfa":
 		renji_reflection_t = maxf(0.0, renji_reflection_t - dt)
@@ -803,6 +815,7 @@ func _move(dt: float) -> void:
 		# FRG12A - explicit AI movement takes precedence over legacy auto-approach
 		if state == S.IDLE and auto_approach and brain != null and o and not o.is_down() and dist > ENGAGE and in_move.length_squared() < 0.0001:
 			v = walk_speed * status_runtime.movement_multiplier()
+			if kit == "greatsword" and garrick_resolve >= 2: v *= 1.20
 			walking = on_ground
 		if state == S.ATTACK and not atk.is_empty() and atk_phase <= 1 and dist > MIN_DIST + 0.15:
 			v += float(atk.lunge)
@@ -821,6 +834,9 @@ func _move(dt: float) -> void:
 		if steer > 0.0 and in_move.length_squared() > 0.0001:
 			var sprint_now := in_sprint and state == S.IDLE and on_ground
 			var speed := move_speed * (SPRINT_MULT if sprint_now else 1.0) * status_runtime.movement_multiplier()
+			# FRG19L: approaching with 2+ Resolve grants +20% speed, not sideways retreat speed.
+			if kit == "greatsword" and garrick_resolve >= 2 and o != null and not o.is_down() and in_move.normalized().dot(dir) > 0.25:
+				speed *= 1.20
 			requested = in_move.normalized() * speed * steer
 			running = sprint_now
 		var response := GROUND_ACCEL if requested.length_squared() > 0.01 else GROUND_BRAKE
@@ -920,6 +936,10 @@ func receive_hit(attacker, a: Dictionary, power: float) -> String:
 		if model != null: model.flash(Color("#d4b0ff"), 0.14)
 		return "parry"
 	var dmg: float = float(a.dmg) * power * status_runtime.incoming_multiplier()
+	# FRG19L: 25% less projectile HP damage when advancing with 2+ Resolve.
+	# The metadata is set by Match only for real projectile hits; guard cost remains unchanged.
+	if kit == "greatsword" and bool(a.get("_garrick_resolve_defense", false)):
+		dmg *= 0.75
 	# Staff mastery reduces normal damage; SPLIT grip trades guard for speed.
 	if kit == "tristaff": dmg *= 1.08 if zephyr_mode == 1 else 0.90
 	if state == S.BLOCK and not (kit == "tristaff" and zephyr_mode == 1):
