@@ -94,5 +94,13 @@
     "walk": 3.05,
     "parry": 0.205,
     "jump": 7.9
+  },
+  "scythe": {
+    "hp": 2200,
+    "guard": 84,
+    "move": 3.72,
+    "walk": 3.02,
+    "parry": 0.19,
+    "jump": 8.0
   }
 }

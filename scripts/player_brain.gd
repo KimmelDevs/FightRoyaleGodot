@@ -44,7 +44,7 @@ func think(f: Fighter, _dt: float) -> void:
 	var fwd := -camera.global_basis.z; fwd.y = 0; fwd = fwd.normalized()
 	if x != 0 or y != 0: f.in_move = (right * x + fwd * y).normalized()
 	f.in_sprint = Keys.held("sprint")
-	if f.kit == "tristaff" and _mode_pending: f.in_mode_switch = true
+	if f.kit in ["tristaff", "scythe"] and _mode_pending: f.in_mode_switch = true
 	_mode_pending = false
 	if _dodge_pending:
 		# A stationary dodge retreats from the opponent; moving dodge follows input.

@@ -865,5 +865,43 @@
       "shield": "#243e48",
       "emblem": "#e8d9a0"
     }
+  },
+  {
+    "id": "nythera",
+    "title": "Gravity Reaper",
+    "role": "Scythe - Moonfloat / Dreadfall",
+    "desc": "Marks enemies with gravity orbs, then consumes them for Dreadfall momentum.",
+    "stats": {
+      "power": 4,
+      "speed": 4,
+      "range": 4,
+      "defense": 3
+    },
+    "look": {
+      "name": "Nythera",
+      "body": "f",
+      "vrm": "nythera",
+      "kit": "scythe",
+      "element": "gravity",
+      "outfit": "reaper",
+      "style": "long",
+      "hat": "none",
+      "hair": "#c7d2ec",
+      "hair_shade": "#8293bb",
+      "iris_top": "#aa8fff",
+      "iris_bottom": "#e9d6ff",
+      "eye_dark": "#2a2148",
+      "tunic": "#2b2341",
+      "band": "#6d5c8a",
+      "pants": "#292438",
+      "boots": "#1a1729",
+      "metal": "#8f92b1",
+      "trim": "#a58bdb",
+      "cape": "#251b3d",
+      "cape_bottom": "#5c4e92",
+      "glow": "#bc89ff",
+      "shield": "#322753",
+      "emblem": "#c4b1ef"
+    }
   }
 ]

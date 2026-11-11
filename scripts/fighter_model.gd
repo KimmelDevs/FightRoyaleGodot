@@ -322,6 +322,23 @@ func _build_weapons() -> void:
 			blade_tip = _pivot(root, Vector3(0, 1.69, 0))
 			cast_point = blade_tip
 			shield_node = l
+
+		"scythe": # FRG19H — single curved gravity scythe with a long handle
+			var shaft := _pivot(r, Vector3(0, -0.26, 0))
+			_part(shaft, _cyl(0.021, 0.021, 1.83, 16), _mat(L.band), Vector3(0, 0.72, 0))
+			_part(shaft, _cyl(0.028, 0.028, 0.16, 12), trim, Vector3(0, -0.11, 0))
+			_part(shaft, _box(0.08, 0.26, 0.05), glow, Vector3(0, 1.47, -0.02))
+			var blade := _pivot(shaft, Vector3(0, 1.59, 0))
+			# Curved blade sweeps right, then hooks downward; not a straight sword.
+			_part(blade, _box(0.35, 0.085, 0.065), steel, Vector3(0.14, 0.04, 0), Vector3(0, 0, 0.16))
+			_part(blade, _box(0.30, 0.075, 0.056), steel, Vector3(0.43, 0.12, 0), Vector3(0, 0, 0.47))
+			_part(blade, _box(0.23, 0.064, 0.048), steel, Vector3(0.64, 0.06, 0), Vector3(0, 0, 0.97))
+			_part(blade, _box(0.19, 0.045, 0.036), glow, Vector3(0.69, -0.12, -0.015), Vector3(0, 0, 1.26))
+			_part(blade, _cyl(0.0, 0.042, 0.14, 10), steel, Vector3(0.77, -0.18, 0), Vector3(0, 0, 1.16))
+			blade_base = _pivot(shaft, Vector3(0, 1.53, 0))
+			blade_tip = _pivot(blade, Vector3(0.79, -0.22, 0))
+			cast_point = blade_tip
+			shield_node = l
 		"hammer": # FRG19D Nesa - giant heart-shaped hammer, attached to right hand
 			var pole := _pivot(r)
 			_part(pole, _cyl(0.025, 0.025, 1.35, 14), _mat(L.band), Vector3(0, 0.49, 0))

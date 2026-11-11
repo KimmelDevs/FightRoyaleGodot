@@ -161,9 +161,12 @@
       "heavy_scale": 1.31
     },
     "nythera": {
-      "archetype": "katana",
-      "range_scale": 1.18,
-      "orbit_scale": 1.24
+      "archetype": "glaive",
+      "attack_pace": 1.06,
+      "skill_pace": 1.09,
+      "approach_scale": 1.03,
+      "orbit_scale": 1.2,
+      "parry_scale": 1.06
     },
     "zenith": {
       "archetype": "katana",

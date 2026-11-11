@@ -1,0 +1,24 @@
+{
+  "version": "19H.1",
+  "character": "nythera",
+  "browser_reference": "https://github.com/KimmelDevs/Fight-Royale/blob/main/web/src/game/kits.ts",
+  "status": "FIRST PLAYABLE PORT — VISUAL/BALANCE PARITY PENDING",
+  "implemented": [
+    "six hit light combo",
+    "charged Grave Descent",
+    "three independently blockable Z/X contacts",
+    "Moonfloat and Dreadfall modes (F)",
+    "Orbit Marks, cap 6, 10s lifetime",
+    "Dreadfall momentum, cap 14",
+    "Moonfloat pulling well and Dreadfall telegraphed collapse",
+    "four-beat Black Star Requiem",
+    "procedural single curved scythe"
+  ],
+  "pending": [
+    "custom gravity reaper VRM bone poses and animation library",
+    "full gravity orb visual system",
+    "specialized scythe choreography",
+    "AI autonomous mode switching",
+    "in-game Godot performance and balance validation"
+  ]
+}

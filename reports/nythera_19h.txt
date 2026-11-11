@@ -1,0 +1,6 @@
+Fight Royale Godot 19H - Nythera Gravity Reaper
+First playable port; use models/nythera.vrm and open Godot editor to import it.
+F switches Moonfloat/Dreadfall. Z: Crescent Snare; X: Zero-G Ascension; C: Event Horizon.
+Dreadfall uses Orbit Marks applied in Moonfloat to gain speed on real hits.
+Advanced scythe choreography and specific mode AI will follow.
+Only Duel vs CPU and CPU vs CPU; no shop or extra game modes.

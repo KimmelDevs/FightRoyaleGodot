@@ -342,6 +342,7 @@ func _process(real_dt: float) -> void:
 			_trails[f].tick(dt)
 	_update_projectiles(dt)
 	_roxy_step_puppets(dt)
+	_nythera_step_wells(dt)
 	_blade_light(dt)
 	_update_camera(real_dt)
 
@@ -395,6 +396,7 @@ func _on_swing(f: Fighter) -> void:
 		match String(a.get("style", "")):
 			"zenith_barrage": _zenith_barrage(f, a)
 			"zenith_arsenal": _zenith_arsenal(f, a); return
+	if f.kit == "scythe" and String(a.get("type", "")) == "melee": _nythera_schedule_beats(f, a)
 	if f.kit == "tristaff" and String(a.get("type", "")) == "melee":
 		_zephyr_schedule_beats(f, a)
 	match a.type:
@@ -542,6 +544,38 @@ func _zenith_arsenal(f: Fighter, a: Dictionary) -> void:
 
 
 # FRG19G — independently timed, defendable strikes (no guaranteed damage).
+
+# FRG19H — scythe skill beats use the ordinary hit/parry/block/clash pipeline.
+func _nythera_schedule_beats(f: Fighter, a: Dictionary) -> void:
+	var count: int = int(a.get("multi_hit", 1))
+	if count <= 1 or not f.active_melee(): return
+	var serial: int = f.swing_serial
+	var round_id: int = _round
+	var span: float = float(a.get("active", 0.0)) * f.attack_time_multiplier()
+	for beat in range(1, count):
+		var wait_time: float = span * float(beat) / float(count)
+		later(wait_time, func():
+			_nythera_beat(f, a, serial, round_id, beat))
+
+func _nythera_beat(f: Fighter, a: Dictionary, serial: int, round_id: int, beat: int) -> void:
+	if round_over or _round != round_id or not is_instance_valid(f) or f.is_down(): return
+	if f.swing_serial != serial or not f.active_melee(): return
+	_melee(f, a, beat)
+
+func _nythera_step_wells(dt: float) -> void:
+	if dt <= 0.0 or round_over: return
+	for f in fighters:
+		if f.kit != "scythe" or f.is_down() or f.nythera_well_seconds <= 0.0: continue
+		f.nythera_well_seconds = maxf(0.0, f.nythera_well_seconds - dt)
+		var center: Vector3 = f.global_position
+		for target in enemies_of(f):
+			var delta: Vector3 = center - target.global_position
+			delta.y = 0.0
+			var gap: float = delta.length()
+			if gap > 0.95 and gap <= 2.8:
+				var pull: float = minf(gap - 0.95, dt * 1.3)
+				target.position += delta.normalized() * pull
+
 func _zephyr_schedule_beats(f: Fighter, a: Dictionary) -> void:
 	var count: int = int(a.get("multi_hit", 1))
 	if count <= 1 or not f.active_melee():
@@ -950,6 +984,29 @@ func _impact(a: Dictionary, pos: Vector3, color: Color, radius: float) -> void:
 func _buff(f: Fighter, a: Dictionary) -> void:
 	var pvp: bool = cfg.mode != "survival"
 	match a.mode:
+
+
+		"gravity_well":
+			# Moonfloat pulls enemies, Dreadfall collapses in a dodgeable circle.
+			if f.kit == "scythe" and f.nythera_mode == 0:
+				f.nythera_well_seconds = 2.6
+				fx.ring(f.position, Color("#a98bef"), 2.8, 0.38, 0.75)
+				fx.number(f.chest() + Vector3(0, 0.7, 0), "EVENT HORIZON", Color("#d7c4ff"), 0.85)
+			else:
+				f.nythera_well_seconds = 0.0
+				var pulse: Dictionary = a.duplicate(true)
+				pulse["type"] = "strike"
+				pulse["at"] = "self"
+				pulse["dmg"] = 116.0
+				pulse["guard"] = 37.0
+				pulse["knock"] = 4.6
+				pulse["stun"] = 0.34
+				pulse["heavy"] = true
+				pulse["delay"] = 0.36
+				pulse["radius"] = 2.7
+				pulse["repeat"] = 1
+				pulse["style"] = "gravity_meteor"
+				_strike(f, pulse, f.atk_power)
 
 		"frost_aegis":
 			# FRG19E: four charges for a maximum of seven seconds (no stacking).

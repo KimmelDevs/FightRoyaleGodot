@@ -96,6 +96,14 @@ var kaizen_bind_seconds := 0.0
 
 # FRG19G Zephyr: STAFF / SPLIT / WHIP / FOLDED and 25-second Dragon Rhythm.
 var in_mode_switch := false
+
+# FRG19H — Nythera's Moonfloat / Dreadfall stance and temporary Orbit Marks.
+var nythera_mode := 0 # 0 Moonfloat, 1 Dreadfall
+var nythera_mode_cd := 0.0
+var nythera_orbit_marks := 0 # On the DEFENDER, stacked only by Nythera
+var nythera_orb_seconds := 0.0
+var nythera_dread_stacks := 0 # On Nythera, +0.1 attack speed per consumed mark
+var nythera_well_seconds := 0.0
 var zephyr_mode := 0
 var zephyr_mode_cooldown := 0.0
 var zephyr_rhythm_stacks := 0
@@ -236,6 +244,16 @@ func remove_status(effect_id: String) -> void:
 
 func notify_passive_event(event_id: String, other: Node = null) -> void:
 
+
+	# Only genuinely damaging hits build / consume Orbit Marks. No reward from blocks/parries.
+	if kit == "scythe" and event_id == "landed_hit" and other is Fighter:
+		if nythera_mode == 0:
+			other.nythera_orbit_marks = mini(6, other.nythera_orbit_marks + 1)
+			other.nythera_orb_seconds = 10.0
+		else:
+			if other.nythera_orbit_marks > 0:
+				other.nythera_orbit_marks -= 1
+				nythera_dread_stacks = mini(14, nythera_dread_stacks + 1)
 	# Dragon Rhythm earns stacks only on real contacts and defense success.
 	if kit == "tristaff" and event_id in ["landed_hit", "blocked", "parried", "clashed", "projectile_destroyed"]:
 		zephyr_rhythm_stacks = mini(zephyr_rhythm_stacks + 1, 3)
@@ -260,6 +278,13 @@ func status_summary() -> String:
 	if kit == "tristaff":
 		var tag: String = ["STAFF", "SPLIT", "WHIP", "FOLDED"][zephyr_mode] + " · Rhythm x%d" % zephyr_rhythm_stacks
 		return tag if summary.is_empty() else tag + ", " + summary
+	if kit == "scythe":
+		var label: String = ("MOONFLOAT" if nythera_mode == 0 else "DREADFALL")
+		label += " · Dread x%d" % nythera_dread_stacks if nythera_dread_stacks > 0 else ""
+		return label if summary.is_empty() else label + ", " + summary
+	if nythera_orbit_marks > 0:
+		var marks: String = "Orbit x%d" % nythera_orbit_marks
+		return marks if summary.is_empty() else marks + ", " + summary
 	return summary
 
 # FRG15D - status HUD and countdown indicators
@@ -281,7 +306,7 @@ func airborne() -> bool: return not on_ground and position.y > 0.7
 
 func tick(dt: float) -> void:
 	in_mode_switch = false; in_attack = false; in_block = false; in_jump = false; in_skill = ""; in_move = Vector3.ZERO; in_dash = Vector3.ZERO
-	in_dodge = Vector3.ZERO; in_sprint = false
+	in_dodge = Vector3.ZERO; in_sprint = false; in_mode_switch = false # FRG19H
 	if brain != null and state != S.KO and state != S.WIN:
 		brain.think(self, dt)
 	if not on_ground: in_block = false
@@ -352,6 +377,17 @@ func tick(dt: float) -> void:
 			zephyr_mode_cooldown = 0.38
 			if model != null:
 				model.set_tristaff_mode(zephyr_mode)
+
+	# FRG19H: F switches between Moonfloat and Dreadfall; do not reuse a held switch.
+	if kit == "scythe":
+		nythera_mode_cd = maxf(0.0, nythera_mode_cd - dt)
+		if in_mode_switch and nythera_mode_cd <= 0.0 and state in [S.IDLE, S.BLOCK]:
+			nythera_mode = 1 - nythera_mode
+			nythera_mode_cd = 0.35
+			if model != null: model.flash(Color("#b6aaff") if nythera_mode == 0 else Color("#e9a5ff"), 0.18)
+	if nythera_orb_seconds > 0.0:
+		nythera_orb_seconds = maxf(0.0, nythera_orb_seconds - dt)
+		if nythera_orb_seconds <= 0.0: nythera_orbit_marks = 0
 	# FRG19F Zenith: consecutive landed hits refresh the 5s charge duration.
 	if zenith_magnetic_timer > 0.0:
 		zenith_magnetic_timer = maxf(0.0, zenith_magnetic_timer - dt)
@@ -393,7 +429,7 @@ func tick(dt: float) -> void:
 	_vertical(dt)
 	if state != S.BLOCK:
 		_guard_delay -= dt
-		if _guard_delay <= 0.0: guard = minf(guard + GUARD_REGEN * dt * status_runtime.guard_regen_multiplier(), max_guard)
+		if _guard_delay <= 0.0: guard = minf(guard + GUARD_REGEN * dt * status_runtime.guard_regen_multiplier() * (1.0 - 0.05 * float(nythera_orbit_marks)), max_guard)
 	model.charge = minf(state_t / CHARGE_MAX, 1.0) if state == S.CHARGE else maxf(model.charge - dt * 4.0, 0.0)
 	_compute_pose()
 	model.play_pose(pose_name, pose_speed)
@@ -409,7 +445,7 @@ func attack_time_multiplier() -> float:
 	var metal_factor: float = 1.0 + 0.01 * float(zenith_magnetic_stacks) if kit == "glaive" and String(look.get("element", "")) == "metal" else 1.0
 	var dragon_mode_speed: float = [1.0, 1.20, 0.94, 1.50][zephyr_mode] if kit == "tristaff" else 1.0
 	var dragon_rhythm_speed: float = 1.0 + 0.20 * float(zephyr_rhythm_stacks) if kit == "tristaff" else 1.0
-	return (1.0 / maxf(1.0 - 0.02 * float(guard_fatigue), 0.5)) * status_runtime.attack_time_multiplier() / (factor * metal_factor * dragon_mode_speed * dragon_rhythm_speed)
+	return (1.0 / maxf(1.0 - 0.02 * float(guard_fatigue), 0.5)) * status_runtime.attack_time_multiplier() / (factor * metal_factor * dragon_mode_speed * dragon_rhythm_speed) * (1.0 + 0.05 * float(nythera_orbit_marks)) / (1.0 + 0.10 * float(nythera_dread_stacks))
 
 ## True throughout the *entire* damaging window, not just on the first active frame.
 func active_melee() -> bool:
@@ -563,6 +599,9 @@ func _start_attack(aid: String) -> void:
 	atk_power *= dmg_mult * (RAGE_MULT if rage_t > 0.0 else 1.0) * status_runtime.outgoing_multiplier()
 	atk_id = aid
 	atk = attacks[aid].duplicate(true)
+	if kit == "scythe" and String(atk.get("type", "melee")) == "melee":
+		if nythera_mode == 1: atk_power *= 1.15
+		if not on_ground: atk_power *= 3.0
 	if kit == "tristaff" and String(atk.get("type", "melee")) == "melee":
 		match zephyr_mode:
 			1: atk["reach"] = float(atk.reach) * 1.07
