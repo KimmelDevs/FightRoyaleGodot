@@ -1,0 +1,7 @@
+19O — Rook / Iron Fist
+Five light punches: 50 / 50 / 68.75 / 75 / 118.75 base damage.
+BEATDOWN: each real hit boosts best hit chain; +1% damage per best hit.
+Chain resets after 2.8s without contact and on guarded/parried/countered attacks.
+Meteor Fist: all cast phases have super armor. Damage and KO remain possible.
+Existing Rook VRM, Rush, Shockwave Punch, Meteor Fist and Iron Body remain.
+Godot engine gameplay validation pending.

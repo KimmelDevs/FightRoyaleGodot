@@ -1,0 +1,20 @@
+{
+  "version": "19O.1",
+  "character": "rook",
+  "state": "FIRST PLAYABLE REFINEMENT",
+  "source": "https://raw.githubusercontent.com/KimmelDevs/Fight-Royale/main/web/src/game/kits.ts",
+  "completed": [
+    "Five light attacks gain browser 25% damage bonus (50/50/68.75/75/118.75)",
+    "Beatdown: uninterrupted real HP hits build a best-of-round count; +1% attack power per best hit",
+    "Blocked, parried, guard-broken and countered swings break the active chain",
+    "Current chain resets after 2.8 seconds without a real hit; best remains for the round",
+    "Meteor Fist C has super armor during wind-up, leap, landing and recovery",
+    "Super armor ignores control and knockback, but not HP damage or KO",
+    "Preserves Rook skill identities and animation library and leaves legacy knuckle fighters unchanged"
+  ],
+  "pending": [
+    "custom Meteor Fist landing crater choreography",
+    "Godot engine playtest"
+  ],
+  "notes": "Rook is an existing fighter. No shop and no new modes."
+}

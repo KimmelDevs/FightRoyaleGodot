@@ -1326,6 +1326,8 @@ func apply_hit(attacker, d: Fighter, a: Dictionary, power: float, hit_pos: Vecto
 			attacker.notify_passive_event("was_parried", d)
 	elif result == "guard_break":
 		d.notify_passive_event("guard_broken", attacker if attacker is Fighter else null)
+		if attacker is Fighter and attacker.kit == "knuckles" and String(attacker.look.get("vrm", "")) == "rook":
+			attacker.notify_passive_event("guard_break_attack", d) # FRG19O
 	var glow := Color(attacker.look.glow) if attacker is Fighter else Color.WHITE
 	var heavy: bool = bool(a.get("heavy", false)) or String(a.get("id", "")) == "l3"
 	var shield_pos := d.model.shield_node.global_position if d.model.shield_node else hit_pos
@@ -1360,6 +1362,9 @@ func apply_hit(attacker, d: Fighter, a: Dictionary, power: float, hit_pos: Vecto
 			add_trauma(0.4); hit_stop(0.35)
 
 		"counter":
+			# FRG19O — a counter breaks Rook's active hit chain.
+			if attacker is Fighter and attacker.kit == "knuckles" and String(attacker.look.get("vrm", "")) == "rook":
+				attacker.notify_passive_event("countered_attack", d)
 
 			if d.kit == "sickle" and d.veyr_feint_counter:
 				d.veyr_feint_counter = false

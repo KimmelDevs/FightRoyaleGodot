@@ -131,6 +131,10 @@ var zenith_magnetic_timer := 0.0
 var kaede_counter_bloom := 0
 # FRG19N — tracks fire-mage ground hazards; each Fighter is round-local.
 var ember_ground_patches := 0
+# FRG19O — Rook: consecutive genuine hits build round-local Beatdown.
+var rook_combo_hits := 0
+var rook_best_hits := 0
+var rook_last_hit_at := -99.0
 var garrick_resolve := 0
 var garrick_crack_cooldown := 0.0
 var zarek_momentum := 0  # FRG19B projectile-destroy Clash Momentum
@@ -237,7 +241,13 @@ func _apply_emblem(eid: String, level: int) -> void:
 		move_speed *= 1.0 + b.get("speed", 0.0) * l
 
 # Status API used by later character installers and ability definitions.
+func _rook_meteor_armor() -> bool:
+	return kit == "knuckles" and String(look.get("vrm", "")) == "rook" and state == S.ATTACK and atk_id == "c" and String(atk.get("name", "")) == "Meteor Fist"
+
 func add_status(effect_id: String, stacks: int = 1, seconds: float = -1.0) -> bool:
+	# FRG19O — super armor resists control application, never damage-over-time.
+	if _rook_meteor_armor() and effect_id in ["freeze", "paralyze", "root", "slow", "stun"]:
+		return false
 	if status_runtime == null:
 		return false
 	var applied: bool = status_runtime.apply_effect(effect_id, stacks, seconds)
@@ -266,6 +276,15 @@ func remove_status(effect_id: String) -> void:
 		status_runtime.clear_effect(effect_id)
 
 func notify_passive_event(event_id: String, other: Node = null) -> void:
+	# FRG19O — Beatdown only counts confirmed HP-damaging contacts.
+	if kit == "knuckles" and String(look.get("vrm", "")) == "rook":
+		if event_id == "landed_hit":
+			if _clock - rook_last_hit_at > 2.8: rook_combo_hits = 0
+			rook_last_hit_at = _clock
+			rook_combo_hits += 1
+			rook_best_hits = maxi(rook_best_hits, rook_combo_hits)
+		elif event_id in ["blocked_attack", "was_parried", "guard_break_attack", "countered_attack"]:
+			rook_combo_hits = 0
 
 
 	# Only genuinely damaging hits build / consume Orbit Marks. No reward from blocks/parries.
@@ -305,6 +324,10 @@ func notify_passive_event(event_id: String, other: Node = null) -> void:
 
 func status_summary() -> String:
 	var summary: String = status_runtime.short_label() if status_runtime != null else ""
+	# FRG19O — permanent best-of-round bonus, temporary active hit chain.
+	if kit == "knuckles" and String(look.get("vrm", "")) == "rook":
+		var label: String = "BEATDOWN %d | BEST %d (+%d%%)" % [rook_combo_hits, rook_best_hits, rook_best_hits]
+		return label if summary.is_empty() else label + ", " + summary
 	if kit == "glaive" and zarek_momentum > 0:
 		return "Momentum x%d" % zarek_momentum if summary.is_empty() else "Momentum x%d, %s" % [zarek_momentum, summary]
 	if kit == "glaive" and String(look.get("element", "")) == "metal" and zenith_magnetic_stacks > 0:
@@ -370,10 +393,12 @@ func tick(dt: float) -> void:
 	if not on_ground: in_block = false
 	state_t += dt
 	_clock += dt
+	if kit == "knuckles" and String(look.get("vrm", "")) == "rook" and rook_combo_hits > 0 and _clock - rook_last_hit_at > 2.8:
+		rook_combo_hits = 0
 	if status_runtime != null:
 		status_runtime.step(dt)
 		# FRG15B - Apply CC to both player and AI inputs; no editor setup needed.
-		if status_runtime.control_blocks("movement"):
+		if not _rook_meteor_armor() and status_runtime.control_blocks("movement"):
 			in_move = Vector3.ZERO
 			in_dash = Vector3.ZERO
 			in_dodge = Vector3.ZERO
@@ -382,18 +407,18 @@ func tick(dt: float) -> void:
 			_steer_vel = Vector3.ZERO
 			_dash_t = 0.0
 			_dodge_t = 0.0
-		if status_runtime.control_blocks("attack"):
+		if not _rook_meteor_armor() and status_runtime.control_blocks("attack"):
 			in_attack = false
 			_atk_prev = false
 			_holding = false
 			if state in [S.ATTACK, S.CHARGE]:
 				_interrupt_attack()
 				_set_state(S.IDLE)
-		if status_runtime.control_blocks("skill"):
+		if not _rook_meteor_armor() and status_runtime.control_blocks("skill"):
 			in_skill = ""
 			_queued_skill = ""
 			_queued_skill_t = 0.0
-		if status_runtime.control_blocks("defense"):
+		if not _rook_meteor_armor() and status_runtime.control_blocks("defense"):
 			in_block = false
 			if state == S.BLOCK:
 				_set_state(S.IDLE)
@@ -697,6 +722,9 @@ func _start_attack(aid: String) -> void:
 	atk_power *= dmg_mult * (RAGE_MULT if rage_t > 0.0 else 1.0) * status_runtime.outgoing_multiplier()
 	atk_id = aid
 	atk = attacks[aid].duplicate(true)
+	# FRG19O — 1% extra power per best consecutive real hit this round.
+	if kit == "knuckles" and String(look.get("vrm", "")) == "rook":
+		atk_power *= 1.0 + 0.01 * float(rook_best_hits)
 	# FRG19M — Kaede begins 20% weaker and regains 5% per confirmed Z counter.
 	if kit == "katana":
 		atk_power *= 0.80 + 0.05 * float(kaede_counter_bloom)
@@ -902,6 +930,8 @@ func teleport(to: Vector3) -> void:
 		rotation.y = atan2(d.x, d.z)
 
 func _apply_knock(attacker, speed: float) -> void:
+	# FRG19O — Meteor Fist continues even when struck; HP still decreases.
+	if _rook_meteor_armor(): return
 	if speed <= 0.0: return
 	_knock = maxf(_knock, speed)
 	var away := -forward()
@@ -991,6 +1021,8 @@ func receive_hit(attacker, a: Dictionary, power: float) -> String:
 	_apply_knock(attacker, float(a.knock))
 	model.flash()
 	if hp <= 0.0: _ko(); return "ko"
+	# FRG19O — damage taken, but no stun or attack interruption while casting C.
+	if _rook_meteor_armor(): return "crit" if last_crit else "hit"
 
 	# Blood Festival grants stun immunity, NOT damage or knockback immunity.
 	if kit == "sickle" and veyr_festival_t > 0.0:
@@ -1009,9 +1041,11 @@ func receive_hit(attacker, a: Dictionary, power: float) -> String:
 	return "crit" if last_crit else "hit"
 
 func stagger(d: float) -> void:
+	if _rook_meteor_armor(): return
 	_stun = d; _stun_pose = "stagger"; _interrupt_attack(); _set_state(S.STAGGER)
 
 func clash_recoil() -> void:
+	if _rook_meteor_armor(): return
 	_stun = 0.38; _stun_pose = "clash"; _interrupt_attack(); _apply_knock(opponent, 4.0); _set_state(S.HITSTUN)
 
 func win() -> void:
