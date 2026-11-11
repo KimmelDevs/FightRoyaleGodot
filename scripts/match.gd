@@ -418,6 +418,10 @@ func _on_swing(f: Fighter) -> void:
 	if f.kit == "tonfa" and String(a.get("type", "")) == "melee": _renji_schedule_beats(f, a)
 	if f.kit == "tristaff" and String(a.get("type", "")) == "melee":
 		_zephyr_schedule_beats(f, a)
+	# FRG19R — Kira Phantom Step resolves as three true hits, never a fake melee.
+	if f.kit == "kicks" and String(a.get("style", "")) == "kira_phantom":
+		_kira_phantom_step(f, a)
+		return
 	match a.type:
 		"projectile": _fire(f, a)
 		"strike": _strike(f, a, f.atk_power)
@@ -1140,6 +1144,39 @@ func _update_projectiles(dt: float) -> void:
 			node.queue_free()
 			_projectiles.erase(p)
 
+# FRG19R — Phantom Step: staggerable, 3 independent timed kicks.
+# Each strike repositions Kira behind her CURRENT opponent, but an interrupted
+# cast cannot continue after knockdown, KO, or a new attack; no guaranteed damage.
+func _kira_phantom_step(f: Fighter, a: Dictionary) -> void:
+    if f.opponent == null or f.is_down(): return
+    var serial: int = f.swing_serial
+    var original_round: int = _round
+    var original_target: Fighter = f.opponent
+    for beat in range(3):
+        var beat_index: int = beat
+        later(float(beat_index) * float(a.get("interval", 0.5)), func():
+            if original_round != _round or round_over or not is_instance_valid(f) or f.is_down(): return
+            if f.swing_serial != serial or f.state in [Fighter.S.HITSTUN, Fighter.S.STAGGER, Fighter.S.KO]: return
+            if not is_instance_valid(original_target) or original_target.is_down(): return
+            var target: Fighter = original_target
+            var delta: Vector3 = target.position - f.position
+            delta.y = 0.0
+            if delta.length_squared() < 0.05: delta = f.forward()
+            var behind: Vector3 = target.position + delta.normalized() * 1.10
+            behind.y = f.position.y
+            f.teleport(behind)
+            var kick: Dictionary = a.duplicate(true)
+            kick["type"] = "melee"
+            kick["stun"] = 2.0 if beat_index == 0 else 0.30
+            kick["stagger"] = beat_index == 0
+            kick["knock"] = 1.2 if beat_index < 2 else 3.0
+            fx.ring(target.position, Color("#5ae4d6"), 0.95, 0.18, 0.60)
+            var difference: Vector3 = target.position - f.position
+            difference.y = 0.0
+            if difference.length() <= 2.15 + target.radius:
+                apply_hit(f, target, kick, f.atk_power, target.chest(), difference.normalized(), false)
+        )
+
 ## Area attack(s) at the target (or around the caster) after a telegraphed delay.
 func _strike(f: Fighter, a: Dictionary, power: float) -> void:
 	var rnd := _round
@@ -1217,6 +1254,9 @@ func _impact(a: Dictionary, pos: Vector3, color: Color, radius: float) -> void:
 			fx.ring(g + Vector3(0, 0.65, 0), color, radius * 0.75, 0.18, 0.68)
 		"spin":
 			fx.ring(g + Vector3(0, 1.0, 0), color, radius, 0.2, 0.9)
+		"cyclone_kick_v2", "kira_hundred": # FRG19R — blunt foot impacts, never blade slashes.
+			fx.ring(g + Vector3(0, 0.65, 0), Color("#6cffd7"), radius * 0.82, 0.19, 0.80)
+			fx.flash(g + Vector3(0, 1.05, 0), Color("#dafff1"), 0.30, 0.11, 0.72)
 		_:
 			fx.sparks(pos, color, 14, 5.0)
 	# FRG18A: small selection of per-element and skill-impact sounds.

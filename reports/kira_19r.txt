@@ -1,0 +1,5 @@
+19R — Kira / Tempest Kicker
+Ported browser C Phantom Step (3 timed real kicks), V Hundred Kicks (6 beats),
+and three aerial kick contacts per jump. Existing fighter roster entry preserved.
+Requires Update 19Q; no shop or game mode changes.
+Python dry-run tested; engine runtime test still needed.

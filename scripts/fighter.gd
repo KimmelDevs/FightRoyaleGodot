@@ -135,6 +135,8 @@ var ember_ground_patches := 0
 # FRG19Q — Nyx: real Phantom Rush contacts boost ranged SKILLS only.
 var nyx_ambush_stacks := 0
 var nyx_air_strikes := 0
+# FRG19R — three aerial kicks per jump; resets upon landing.
+var kira_air_strikes := 0
 var rook_combo_hits := 0
 var rook_best_hits := 0
 var rook_last_hit_at := -99.0
@@ -330,6 +332,10 @@ func notify_passive_event(event_id: String, other: Node = null) -> void:
 func status_summary() -> String:
 	var summary: String = status_runtime.short_label() if status_runtime != null else ""
 	# FRG19Q — Nyx HUD: +2% ranged skill damage per landed Phantom Rush.
+	# FRG19R: Kira can make three distinct airborne kicks per jump.
+	if kit == "kicks":
+		var kick_text: String = "AIR KICKS %d/3" % kira_air_strikes
+		return kick_text if summary.is_empty() else kick_text + ", " + summary
 	if kit == "assassin":
 		var ambush_text: String = "AMBUSH x%d (+%d%% RANGED SKILLS)" % [nyx_ambush_stacks, nyx_ambush_stacks * 2]
 		return ambush_text if summary.is_empty() else ambush_text + ", " + summary
@@ -559,6 +565,14 @@ func tick(dt: float) -> void:
 	_vertical(dt)
 	# FRG19Q — landing restores air charges; interrupted air combos cannot
 	# restart a third airborne strike on the ground.
+	# FRG19R: air combo cannot be resumed once Kira touches the ground.
+	if kit == "kicks" and on_ground and kira_air_strikes != 0:
+		kira_air_strikes = 0
+		_combo_next = "l1"
+		_combo_timer = 0.0
+		if atk_id in ["air_l1", "air_l2", "air_l3"]:
+			_buffered = false
+			atk["next"] = ""
 	if kit == "assassin" and on_ground and nyx_air_strikes != 0:
 		nyx_air_strikes = 0
 		_combo_next = "l1"
@@ -727,12 +741,23 @@ func _try_queued_light(dt: float) -> void:
 		return
 	if state == S.IDLE and atk_lock <= 0.0 and not in_block and _queued_skill == "":
 		_queued_light_t = 0.0
-		if kit == "assassin" and not on_ground:
+		if kit == "kicks" and not on_ground:
+			if kira_air_strikes < 3: _start_attack("air_l%d" % (kira_air_strikes + 1))
+		elif kit == "assassin" and not on_ground:
 			if nyx_air_strikes < 2: _start_attack("air_l%d" % (nyx_air_strikes + 1))
 		else:
 			_start_attack(_combo_next if _combo_timer > 0.0 else "l1")
 
 func _request_light() -> void:
+	# FRG19R — Kira: three real airborne kick contacts, not an unlimited loop.
+	if kit == "kicks" and not on_ground:
+		if kira_air_strikes >= 3: return
+		if state in [S.IDLE, S.BLOCK]:
+			if atk_lock <= 0.0: _start_attack("air_l%d" % (kira_air_strikes + 1))
+			else: _queued_light_t = LIGHT_BUFFER_SECONDS
+		elif state == S.ATTACK and atk_id in ["air_l1", "air_l2"]:
+			_buffered = true
+		return
 	# FRG19Q — two independently damaging air dagger hits per jump.
 	if kit == "assassin" and not on_ground:
 		if nyx_air_strikes >= 2: return
@@ -754,12 +779,16 @@ func _request_light() -> void:
 
 func _start_attack(aid: String) -> void:
 	# FRG19Q — never allow queued air strikes when back on the ground.
+	if kit == "kicks" and aid in ["air_l1", "air_l2", "air_l3"] and on_ground: return # FRG19R
 	if kit == "assassin" and aid in ["air_l1", "air_l2"] and on_ground: return
 	atk_power = 1.0
 	if aid == "heavy" and state == S.CHARGE: atk_power = 1.0 + 0.5 * minf(state_t / CHARGE_MAX, 1.0)
 	atk_power *= dmg_mult * (RAGE_MULT if rage_t > 0.0 else 1.0) * status_runtime.outgoing_multiplier()
 	atk_id = aid
 	atk = attacks[aid].duplicate(true)
+	# FRG19R — each Kira air kick advances once, including buffered chains.
+	if kit == "kicks" and aid in ["air_l1", "air_l2", "air_l3"]:
+		kira_air_strikes = int(aid.right(1))
 	# FRG19Q — count at swing START, so every subsequent air cut is separate.
 	if kit == "assassin" and aid in ["air_l1", "air_l2"]:
 		nyx_air_strikes = 1 if aid == "air_l1" else 2
@@ -915,7 +944,7 @@ func _move(dt: float) -> void:
 		if _knock > 0.0:
 			pos += _knock_dir * _knock * dt
 
-		var steer := 1.0 if state == S.IDLE else 0.5 if state == S.BLOCK else 0.4 if state == S.CHARGE else 0.63 if kit == "assassin" and not on_ground and state == S.ATTACK and atk_id in ["air_l1", "air_l2"] else 0.35 if kit == "chainblade" and state == S.ATTACK and atk_id in ["z", "c"] else 0.0
+		var steer := 1.0 if state == S.IDLE else 0.5 if state == S.BLOCK else 0.4 if state == S.CHARGE else 0.65 if kit == "kicks" and not on_ground and state == S.ATTACK and atk_id in ["air_l1", "air_l2", "air_l3"] else 0.63 if kit == "assassin" and not on_ground and state == S.ATTACK and atk_id in ["air_l1", "air_l2"] else 0.35 if kit == "chainblade" and state == S.ATTACK and atk_id in ["z", "c"] else 0.0
 		# Don't let direct input instantly erase a strong knockback reaction.
 		if _knock > 0.2: steer *= 0.35
 		var requested := Vector3.ZERO

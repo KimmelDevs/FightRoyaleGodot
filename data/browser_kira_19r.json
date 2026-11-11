@@ -1,0 +1,21 @@
+{
+  "version": "19R.1",
+  "id": "kira",
+  "character": "Kira / Tempest Kicker",
+  "source": "https://raw.githubusercontent.com/KimmelDevs/Fight-Royale/main/web/src/game/kits.ts",
+  "state": "FIRST PLAYABLE REFINEMENT",
+  "completed": [
+    "Preserved existing Kira roster ID, VRM and four light kicks",
+    "Cyclone Kick: three area pulses",
+    "Crescent Gale retained",
+    "Phantom Step: three real teleport kicks with stagger on first contact",
+    "Hundred Kicks ultimate: six fast impacts and no invulnerability",
+    "Three aerial combo kicks per jump with air steering; grounded reset",
+    "HUD air-kick counter"
+  ],
+  "pending": [
+    "Pose-specific alternate-leg choreography",
+    "Exact Godot visual alignment",
+    "Full engine playtest"
+  ]
+}
