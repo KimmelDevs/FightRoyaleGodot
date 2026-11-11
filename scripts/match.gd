@@ -1501,6 +1501,9 @@ func _impact(a: Dictionary, pos: Vector3, color: Color, radius: float) -> void:
 	match a.style:
 		"explosion", "meteor", "bomb", "clusterbomb", "mine", "powder_keg":
 			fx.explosion(g, color, radius); add_trauma(0.35 if a.style == "explosion" else 0.6)
+		"arrows": # FRG19V — a burst of arrows, not magical blade slashes.
+			fx.sparks(g + Vector3(0, 0.75, 0), Color("#ff697c"), 14, 3.7, Vector3.UP)
+			fx.ring(g, Color("#d54a60"), radius * 0.88, 0.20, 0.65)
 		"lightning":
 			fx.flash(g + Vector3(0, 0.4, 0), Color("#fff2b0"), radius * 0.6, 0.15, 0.9)
 			fx.sparks(g + Vector3(0, 0.2, 0), color, 30, 7.0, Vector3.UP)
@@ -1668,6 +1671,12 @@ func apply_hit(attacker, d: Fighter, a: Dictionary, power: float, hit_pos: Vecto
 	if attacker is Fighter and attacker.kit == "assassin" and String(a.get("id", "")) in ["z", "x", "c", "v"] and String(a.get("type", "")) in ["projectile", "strike", "lob"]:
 		delivered_power *= 1.0 + float(attacker.nyx_ambush_stacks) * 0.02
 	var result := d.receive_hit(attacker, incoming_attack, delivered_power)
+	# FRG19V — Ash Hunter's Snare pins only after a confirmed damaging contact.
+	# This is independent from bleed and never triggers on block/parry/clash.
+	if attacker is Fighter and attacker.kit == "bow" and String(attacker.look.get("vrm", "")) == "ash" and bool(a.get("ash_root_on_hit", false)) and result in ["hit", "crit"] and not d.is_down():
+		if d.add_status("root", 1, float(a.get("ash_root_duration", 1.6))):
+			fx.ring(hit_pos, Color("#f04d67"), 1.0, 0.22, 0.70)
+			fx.number(d.chest() + Vector3(0, 0.6, 0), "SNARED", Color("#ff9fae"), 0.75)
 	# FRG19T: only confirmed Gale dive-smash HP hits refund cooldowns.
 	# One victim per duel; blocked/parried/invulnerable hits grant nothing.
 	if attacker is Fighter and attacker.kit == "wind" and bool(a.get("gale_smash", false)) and result in ["hit", "crit", "ko"]:

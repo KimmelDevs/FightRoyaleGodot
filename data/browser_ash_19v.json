@@ -1,0 +1,27 @@
+{
+  "version": "19V.1",
+  "id": "ash",
+  "character": "Ash — Crimson Hunter",
+  "kind": "EXISTING FIGHTER REFINEMENT",
+  "browser_reference": "https://raw.githubusercontent.com/KimmelDevs/Fight-Royale/main/web/src/game/kits.ts",
+  "browser_reference_checked": "2026-11-11",
+  "implemented": [
+    "Bow basic light 48/50/37 HP damage; third basic shoots 3 arrows",
+    "Charged heavy 195 HP damage, guard 30, piercing projectile",
+    "Leap Back retains 4-second cooldown",
+    "Arrow Rain: 3 area impacts; confirmed HP hits apply 4-second bleed",
+    "Hunters Snare: confirmed HP hits apply 4-second bleed and 1.6-second root",
+    "Piercing Volley: 5 piercing arrows",
+    "Ash-specific bow visuals for Arrow Rain"
+  ],
+  "unchanged": [
+    "VRM and model assets",
+    "other fighter kits",
+    "two existing game modes",
+    "shop disabled and player progression scope"
+  ],
+  "limitations": [
+    "Godot engine compile and in-game animation alignment not verified",
+    "Godot status bleed amount follows the existing status rule, not browser absolute 22 DPS"
+  ]
+}

@@ -1,0 +1,8 @@
+Fight Royale Godot — Update 19V / Ash Crimson Hunter
+Updated the existing Ash bow kit; no new roster entry.
+Basic damage: 48, 50, 37 each x 3; heavy damage 195 / guard damage 30.
+Arrow Rain applies bleeding on confirmed HP damage, up to three area hits.
+Hunter's Snare roots for 1.6 seconds and bleeds only on confirmed HP hits.
+Piercing Volley fires five piercing arrows; Leap Back stays on a 4s cooldown.
+Status bleed intensity is inherited from data/status_rules_15a.json.
+Godot compilation and actual gameplay remain unverified.
