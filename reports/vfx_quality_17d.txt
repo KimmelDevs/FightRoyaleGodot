@@ -1,0 +1,13 @@
+Fight Royale Godot — Update 17D: VFX Quality and Performance
+
+Preset: balanced
+Max concurrent temporary effects: 120
+Maximum particles per MultiMesh burst: 36
+Burst density scale: 0.82
+
+- Limits temporary visual nodes and MultiMesh instances, prioritizing recent impacts.
+- Oldest visual is retired when at the active-effect limit.
+- Changes affect sparks, motes, rings, flashes and visual bursts only.
+- No changes to attacks, hitboxes, damage, status, AI, animations, or rigs.
+- GL Compatibility renderer stays unchanged.
+- Open Godot editor after installing and test Duel vs CPU / CPU vs CPU.

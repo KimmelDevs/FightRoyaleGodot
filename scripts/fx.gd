@@ -5,6 +5,37 @@ extends Node3D
 
 var _items: Array = []  # [node, updater Callable(dt) -> bool alive]
 
+# FRG17D - VFX quality and performance
+# Purely cosmetic. Read presets at startup from res://data/vfx_quality.json.
+# When the settings file is absent or invalid, use balanced defaults.
+var _vfx17d_max_active: int = 120
+var _vfx17d_max_particles: int = 36
+var _vfx17d_particle_scale: float = 0.82
+
+func _ready() -> void:
+	var preset := "balanced"
+	var cfg_path := "res://data/vfx_quality.json"
+	if FileAccess.file_exists(cfg_path):
+		var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(cfg_path))
+		if parsed is Dictionary:
+			preset = String(parsed.get("preset", "balanced"))
+	match preset:
+		"eco":
+			_vfx17d_max_active = 65
+			_vfx17d_max_particles = 20
+			_vfx17d_particle_scale = 0.55
+		"ultra":
+			_vfx17d_max_active = 200
+			_vfx17d_max_particles = 64
+			_vfx17d_particle_scale = 1.0
+		_:
+			_vfx17d_max_active = 120
+			_vfx17d_max_particles = 36
+			_vfx17d_particle_scale = 0.82
+
+func active_effect_count_17d() -> int:
+	return _items.size()
+
 func _process(dt: float) -> void:
 	for i in range(_items.size() - 1, -1, -1):
 		var it: Array = _items[i]
@@ -13,6 +44,11 @@ func _process(dt: float) -> void:
 			_items.remove_at(i)
 
 func _add(n: Node3D, upd: Callable) -> void:
+	# FRG17D: retire the oldest visual if the budget is full. Never block a new hit.
+	if _items.size() >= _vfx17d_max_active:
+		var oldest: Array = _items.pop_front()
+		if is_instance_valid(oldest[0]):
+			oldest[0].queue_free()
 	add_child(n)
 	_items.append([n, upd])
 
@@ -27,17 +63,19 @@ static func unlit(c: Color, alpha := 1.0, additive := false) -> StandardMaterial
 
 ## Burst of small pieces flying out under gravity.
 func burst(pos: Vector3, mesh: Mesh, mat: Material, amount: int, speed: float, dir := Vector3.ZERO, spread := 1.0, gravity := 9.0, life := 0.4, size := 1.0) -> void:
+	# FRG17D: reduce MultiMesh instance work while preserving effect shapes/timing.
+	var actual_amount: int = clampi(roundi(float(amount) * _vfx17d_particle_scale), 0, _vfx17d_max_particles)
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.mesh = mesh
-	mm.instance_count = amount
+	mm.instance_count = actual_amount
 	var mi := MultiMeshInstance3D.new()
 	mi.multimesh = mm
 	mi.material_override = mat
 	var vel: Array[Vector3] = []
 	var p: Array[Vector3] = []
 	var sizes: Array[float] = []
-	for i in amount:
+	for i in actual_amount:
 		var d := Vector3(randf() - 0.5, randf() - 0.5, randf() - 0.5).normalized()
 		if dir != Vector3.ZERO: d = (dir.normalized() + d * spread).normalized()
 		elif spread < 1.0: d = Vector3(d.x * spread, 1, d.z * spread).normalized()
@@ -48,7 +86,7 @@ func burst(pos: Vector3, mesh: Mesh, mat: Material, amount: int, speed: float, d
 	_add(mi, func(dt: float) -> bool:
 		t[0] += dt
 		var f := maxf(1.0 - t[0] / life, 0.0)
-		for i in amount:
+		for i in actual_amount:
 			vel[i].y -= gravity * dt
 			vel[i] *= maxf(1.0 - 3.0 * dt, 0.0)
 			p[i] += vel[i] * dt

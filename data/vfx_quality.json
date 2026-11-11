@@ -1,0 +1,11 @@
+{
+  "version": "17D.1",
+  "preset": "balanced",
+  "visual_effects_only": true,
+  "budget": {
+    "max_active_effects": 120,
+    "max_burst_particles": 36,
+    "particle_scale": 0.82
+  },
+  "note": "Change the preset by rerunning install_17d_vfx_quality.py --preset eco|balanced|ultra"
+}
