@@ -1017,5 +1017,43 @@
       "shield": "#71523b",
       "emblem": "#f7d45e"
     }
+  },
+  {
+    "id": "gale",
+    "title": "Wind Dancer",
+    "role": "Fast Airborne Brawler",
+    "desc": "Double-jumps, fast punch chains and converts grounded skills into dive smashes while airborne. Smash hits reduce skill cooldowns by 10%.",
+    "stats": {
+      "power": 3,
+      "speed": 5,
+      "range": 2,
+      "defense": 2
+    },
+    "look": {
+      "name": "Gale",
+      "body": "m",
+      "vrm": "gale",
+      "kit": "wind",
+      "element": "wind",
+      "outfit": "fighter",
+      "style": "spiky",
+      "hat": "",
+      "hair": "#e4edf2",
+      "hair_shade": "#97b9c3",
+      "iris_top": "#31b6b3",
+      "iris_bottom": "#9dfbe5",
+      "eye_dark": "#17484a",
+      "tunic": "#296e80",
+      "band": "#9fe8e8",
+      "pants": "#21384c",
+      "boots": "#163040",
+      "metal": "#cce4e8",
+      "trim": "#78e9dc",
+      "cape": "#226f83",
+      "cape_bottom": "#0b3f5a",
+      "glow": "#72f4dd",
+      "shield": "#4aadb0",
+      "emblem": "#c6ffed"
+    }
   }
 ]

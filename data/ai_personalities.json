@@ -206,6 +206,14 @@
       "approach_scale": 1.17,
       "orbit_scale": 1.22,
       "parry_scale": 1.29
+    },
+    "gale": {
+      "archetype": "knuckles",
+      "attack_pace": 1.3,
+      "orbit_scale": 1.45,
+      "approach_scale": 1.3,
+      "dodge_scale": 1.26,
+      "jump_scale": 1.3
     }
   }
 }

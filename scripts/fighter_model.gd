@@ -305,6 +305,14 @@ func _build_weapons() -> void:
 	var r: Node3D = WeaponMount.configure_grip(_grip("Right"), mount_profile, "right")
 	var l: Node3D = WeaponMount.configure_grip(_grip("Left"), mount_profile, "left")
 	match kit:
+		"wind": # FRG19T — lightweight glowing wind wraps on both fists.
+			for grip in [r, l]:
+				_part(grip, _box(0.105, 0.085, 0.105), _mat(L.metal, true), Vector3(0.03, 0, 0))
+				_part(grip, _box(0.12, 0.015, 0.12), glow, Vector3(0.03, 0.05, 0))
+			blade_base = _pivot(r, Vector3(0, 0.02, 0))
+			blade_tip = _pivot(r, Vector3(0.14, 0.0, 0))
+			cast_point = _pivot(r, Vector3(0, 0.16, 0.13))
+			shield_node = l
 		"bomb": # FRG19S: two-handed grenade maker; no magic staff.
 			var right_bomb := _pivot(r, Vector3(0, 0.12, 0))
 			_part(right_bomb, _sph(0.095), _mat(L.metal, true), Vector3.ZERO)

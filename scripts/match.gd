@@ -1469,6 +1469,9 @@ func _impact(a: Dictionary, pos: Vector3, color: Color, radius: float) -> void:
 			fx.flash(g + Vector3(0, 1.05, 0), Color("#dafff1"), 0.30, 0.11, 0.72)
 		_:
 			fx.sparks(pos, color, 14, 5.0)
+	# FRG19T: the wind smash has a pale vortex rim without new shaders.
+	if bool(a.get("gale_smash", false)):
+		fx.ring(g + Vector3(0, 0.1, 0), Color("#9afbe9"), radius * 1.25, 0.28, 0.85)
 	# FRG18A: small selection of per-element and skill-impact sounds.
 	var style_sound := String(a.get("style", ""))
 	var element_sound := String(a.get("element", ""))
@@ -1602,6 +1605,13 @@ func apply_hit(attacker, d: Fighter, a: Dictionary, power: float, hit_pos: Vecto
 	if attacker is Fighter and attacker.kit == "assassin" and String(a.get("id", "")) in ["z", "x", "c", "v"] and String(a.get("type", "")) in ["projectile", "strike", "lob"]:
 		delivered_power *= 1.0 + float(attacker.nyx_ambush_stacks) * 0.02
 	var result := d.receive_hit(attacker, incoming_attack, delivered_power)
+	# FRG19T: only confirmed Gale dive-smash HP hits refund cooldowns.
+	# One victim per duel; blocked/parried/invulnerable hits grant nothing.
+	if attacker is Fighter and attacker.kit == "wind" and bool(a.get("gale_smash", false)) and result in ["hit", "crit", "ko"]:
+		for key in ["z", "x", "c"]:
+			var own_skill: Dictionary = attacker.attacks.get(key, {})
+			var base_cd: float = float(own_skill.get("cd", 0.0)) * attacker.cd_mult
+			attacker.cooldowns[key] = maxf(0.0, float(attacker.cooldowns.get(key, 0.0)) - base_cd * 0.10)
 
 	# FRG19E: four landed frost shards freeze, with a brief re-freeze cooldown.
 	if attacker is Fighter and String(attacker.look.get("element", "")) == "frost" and String(a.get("style", "")) == "frost_shard" and result in ["hit", "crit", "ko"]:

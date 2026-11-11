@@ -182,6 +182,15 @@
       "skill_bias": {
         "z": 0.15
       }
+    },
+    "gale": {
+      "guard_pressure": 1.2,
+      "guard_reset_threshold": 0.22,
+      "skill_bias": {
+        "z": 0.2,
+        "x": 0.16,
+        "c": 0.1
+      }
     }
   }
 }

@@ -1,0 +1,23 @@
+{
+  "update": "19T.1",
+  "fighter": "gale",
+  "kit": "wind",
+  "source": "https://raw.githubusercontent.com/KimmelDevs/Fight-Royale/main/web/src/game/kits.ts",
+  "abilities": [
+    "Gale Fist",
+    "Wind Step",
+    "Tornado Rise"
+  ],
+  "air_variants": [
+    "Downburst",
+    "Falling Star",
+    "Hurricane Crash"
+  ],
+  "ultimate_v": "provisional Tempest Finale (not claimed browser-equivalent)",
+  "passive": "Confirmed air dive smash hit reduces each equipped skill's remaining cooldown by 10% of its base cooldown.",
+  "animation": "Temporary use of existing knuckles pose library; custom wind pose kit later",
+  "modes": [
+    "Duel vs CPU",
+    "CPU vs CPU"
+  ]
+}

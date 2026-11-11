@@ -143,6 +143,8 @@ var bob_mine_recharge := 0.0
 var bob_barrel_active := false
 var bob_barrel_skill_key := ""
 var bob_barrel_request := false
+# FRG19T — Gale: one extra mid-air jump, both jumps reset on landing.
+var gale_jumps := 0
 var rook_combo_hits := 0
 var rook_best_hits := 0
 var rook_last_hit_at := -99.0
@@ -336,6 +338,9 @@ func notify_passive_event(event_id: String, other: Node = null) -> void:
 		status_runtime.on_event(event_id, other)
 
 func status_summary() -> String:
+	# FRG19T: display Gale's double-jump state in both modes.
+	if kit == "wind":
+		return "DOUBLE JUMP %d/2 | SMASH -10%% CD" % gale_jumps
 	# FRG19S — Bob's remote keg and mine charges are readable in both modes.
 	if kit == "bomb":
 		var btext: String = "MINES %d/4" % bob_mine_charges
@@ -688,9 +693,16 @@ func _read_attack(dt: float) -> void:
 func _read_jump() -> void:
 	var pressed := in_jump and not _jump_prev
 	_jump_prev = in_jump
+	# FRG19T: double jump works with both player and CPU input; no editor rigging.
+	if kit == "wind" and pressed and not on_ground and gale_jumps == 1 and state in [S.IDLE, S.BLOCK]:
+		vel_y = jump_v * 0.88
+		gale_jumps = 2
+		if state == S.BLOCK: _set_state(S.IDLE)
+		return
 	if pressed and on_ground and (state == S.IDLE or state == S.BLOCK):
 		vel_y = jump_v
 		on_ground = false
+		if kit == "wind": gale_jumps = 1
 		if state == S.BLOCK: _set_state(S.IDLE)
 
 func _read_skill(dt: float) -> void:
@@ -815,6 +827,12 @@ func _start_attack(aid: String) -> void:
 	atk_power *= dmg_mult * (RAGE_MULT if rage_t > 0.0 else 1.0) * status_runtime.outgoing_multiplier()
 	atk_id = aid
 	atk = attacks[aid].duplicate(true)
+	# FRG19T: use the equipped skill's own aerial version when Gale is airborne.
+	if kit == "wind" and not on_ground and aid in ["z", "x", "c", "v"]:
+		var air_variant: String = String(atk.get("air_variant", ""))
+		if not air_variant.is_empty() and attacks.has(air_variant):
+			atk = attacks[air_variant].duplicate(true)
+			atk["id"] = aid
 	# FRG19R — each Kira air kick advances once, including buffered chains.
 	if kit == "kicks" and aid in ["air_l1", "air_l2", "air_l3"]:
 		kira_air_strikes = int(aid.right(1))
@@ -868,6 +886,8 @@ func _start_attack(aid: String) -> void:
 	_buffered = false
 	_queued_light_t = 0.0
 	swing_serial += 1
+	if kit == "wind" and float(atk.self_jump) > 0.0 and on_ground:
+		gale_jumps = 1
 	if float(atk.self_jump) > 0.0 and atk.mode != "leap":
 		vel_y = float(atk.self_jump); on_ground = false
 	_set_state(S.ATTACK)
@@ -879,6 +899,32 @@ func _attack_step() -> void:
 	var w: float = float(atk.wind) * attack_time_multiplier()
 	var ac: float = float(atk.active) * attack_time_multiplier()
 	var r: float = float(atk.recover) * attack_time_multiplier()
+	# FRG19T: genuine aerial dive, with one slam on actual touchdown.
+	# No airborne instant-hit and no repeating the touchdown callback.
+	if kit == "wind" and String(atk.get("mode", "")) == "gale_dive":
+		if atk_phase == 0 and state_t >= w:
+			atk_phase = 1
+			vel_y = -maxf(float(atk.get("speed", 24.0)), 12.0)
+			if opponent != null and not opponent.is_down():
+				var delta: Vector3 = opponent.position - position
+				delta.y = 0.0
+				_leap_vel = delta.normalized() * minf(float(atk.get("lunge", 2.0)), delta.length() * 2.0)
+			else:
+				_leap_vel = forward() * minf(float(atk.get("lunge", 2.0)), 4.0)
+		elif atk_phase == 1:
+			if on_ground:
+				atk_phase = 2
+				state_t = w + ac
+				_leap_vel = Vector3.ZERO
+				swing.emit(self)
+			elif state_t > w + 2.0:
+				_leap_vel = Vector3.ZERO
+				_finish_attack()
+				_set_state(S.IDLE)
+		elif atk_phase == 2 and state_t >= w + ac + r:
+			_finish_attack()
+			_set_state(S.IDLE)
+		return
 	if atk.mode == "leap":
 		# Wind-up crouch -> jump toward the target -> the hit lands on touchdown.
 		if atk_phase == 0 and state_t >= w:
@@ -943,7 +989,7 @@ func _move(dt: float) -> void:
 	var walking := false
 	var running := false
 	var burst := false
-	if state == S.ATTACK and atk.get("mode", "") == "leap" and atk_phase == 1:
+	if state == S.ATTACK and String(atk.get("mode", "")) in ["leap", "gale_dive"] and atk_phase == 1: # FRG19T
 		pos += _leap_vel * dt
 		_steer_vel = Vector3.ZERO
 	elif _dash_t > 0.0:
@@ -1017,6 +1063,7 @@ func _vertical(dt: float) -> void:
 	position.y += vel_y * dt
 	if position.y <= 0.0:
 		position.y = 0.0; vel_y = 0.0; on_ground = true
+		if kit == "wind": gale_jumps = 0
 		landed.emit(self)
 
 func teleport(to: Vector3) -> void:
